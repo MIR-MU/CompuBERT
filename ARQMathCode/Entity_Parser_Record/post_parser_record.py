@@ -7,10 +7,13 @@ class PostParserRecord:
         This class is used for reading the post file. It reads it record by record.
     """
     def __init__(self, xml_post_link_file_path, map_comments=None, map_related_post=None, map_duplicate_post=None,
-                 map_votes=None, map_users=None, post_history_parser=None):
+                 map_votes=None, map_users=None, post_history_parser=None, limit_to_first_n=None):
         self.map_questions = {}
         self.map_answers = {}
         self.map_just_answers = {}
+
+        read_limit = limit_to_first_n
+
         for attr_dic in xmliter(xml_post_link_file_path, 'row'):
             post_id = int(attr_dic['@Id'])
             post_type_id = int(attr_dic['@PostTypeId'])
@@ -107,6 +110,12 @@ class PostParserRecord:
                 else:
                     self.map_answers[parent_id] = [answer]
                 self.map_just_answers[answer.post_id] = answer
+
+                if read_limit is not None:
+                    if read_limit < 0:
+                        break
+                    read_limit -= 1
+
         self.__set_answers()
 
     def __set_answers(self):

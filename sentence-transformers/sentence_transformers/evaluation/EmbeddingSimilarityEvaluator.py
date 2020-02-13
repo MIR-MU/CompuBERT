@@ -22,7 +22,8 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
     """
 
 
-    def __init__(self, dataloader: DataLoader, main_similarity: SimilarityFunction = None, name: str = '', show_progress_bar: bool = None):
+    def __init__(self, dataloader: DataLoader, main_similarity: SimilarityFunction = None, name: str = '',
+                 show_progress_bar: bool = None, device=None):
         """
         Constructs an evaluator based for the dataset
 
@@ -43,7 +44,11 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
             show_progress_bar = (logging.getLogger().getEffectiveLevel() == logging.INFO or logging.getLogger().getEffectiveLevel() == logging.DEBUG)
         self.show_progress_bar = show_progress_bar
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
+
         self.csv_file: str = "similarity_evaluation"+name+"_results.csv"
         self.csv_headers = ["epoch", "steps", "cosine_pearson", "cosine_spearman", "euclidean_pearson", "euclidean_spearman", "manhattan_pearson", "manhattan_spearman", "dot_pearson", "dot_spearman"]
 

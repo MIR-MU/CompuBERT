@@ -290,9 +290,9 @@ class SentenceTransformer(nn.Sequential):
         """
         if output_path is not None:
             os.makedirs(output_path, exist_ok=True)
-            if os.listdir(output_path):
-                raise ValueError("Output directory ({}) already exists and is not empty.".format(
-                    output_path))
+            # if os.listdir(output_path):
+            #     raise ValueError("Output directory ({}) already exists and is not empty.".format(
+            #         output_path))
 
         dataloaders = [dataloader for dataloader, _ in train_objectives]
 
