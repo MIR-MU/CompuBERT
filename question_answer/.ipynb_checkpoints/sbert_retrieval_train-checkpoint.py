@@ -20,8 +20,6 @@ def upvotes_to_distance(all_q_votes):
 
 def examples_from_questions(questions):
     for q_i, q in questions.items():
-        if q_i % 100 == 0:
-            print("Loading %s" % q_i)
         for a_i, a in q.answers:
             yield InputExample("%s_%s" % (q_i, a_i), [q.body, a.body], upvotes_to_distance(a.score))
 
