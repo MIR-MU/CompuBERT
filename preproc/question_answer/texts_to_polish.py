@@ -2,9 +2,9 @@ from ARQMathCode.post_reader_record import DataReaderRecord
 from functools import reduce
 
 
-def tex_to_polish(text_formula):
+def tex_to_polish(tex_formula):
     # TODO
-    return text_formula
+    return tex_formula
 
 
 def fulltext_to_polish(entity_body_text, formula_sep="$"):

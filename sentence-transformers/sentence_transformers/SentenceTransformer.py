@@ -13,6 +13,7 @@ from numpy import ndarray
 from torch import nn, Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
 
 from . import __DOWNLOAD_SERVER__
@@ -20,12 +21,20 @@ from .evaluation import SentenceEvaluator
 from .util import import_from_string, batch_to_device, http_get
 from . import __version__
 
+
 class SentenceTransformer(nn.Sequential):
+    tboard_logger = None
     logfile = None
-    def __init__(self, model_name_or_path: str = None, modules: Iterable[nn.Module] = None, device: str = None, logfile: str=None):
+
+    def __init__(self, model_name_or_path: str = None, modules: Iterable[nn.Module] = None,
+                 device: str = None, logfile: str = None, tboard_logdir: str = None):
         if logfile is not None:
             print("Logs go to file %s" % logfile)
             self.logfile = open(logfile, "w")
+
+        if tboard_logdir is not None:
+            print("Tensorboard logs go to dir %s" % tboard_logdir)
+            self.tboard_logger = SummaryWriter(tboard_logdir)
         
         if modules is not None and not isinstance(modules, OrderedDict):
             modules = OrderedDict([(str(idx), module) for idx, module in enumerate(modules)])
@@ -51,7 +60,6 @@ class SentenceTransformer(nn.Sequential):
                 default_cache_path = os.path.join(torch_cache_home, 'sentence_transformers')
                 model_path = os.path.join(default_cache_path, folder_name)
                 os.makedirs(model_path, exist_ok=True)
-
 
                 if not os.listdir(model_path):
                     if model_url[-1] is "/":
@@ -87,7 +95,6 @@ class SentenceTransformer(nn.Sequential):
                     module = module_class.load(os.path.join(model_path, module_config['path']))
                     modules[module_config['name']] = module
 
-
         super().__init__(modules)
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -95,10 +102,12 @@ class SentenceTransformer(nn.Sequential):
         self.device = torch.device(device)
         self.to(device)
         
-    def log(self, message):
+    def log(self, prefix, val, message):
         if self.logfile is not None:
             print(message)
             print(message, file=self.logfile)
+        if self.tboard_logger is not None:
+            self.tboard_logger.add_scalar(prefix, val)
 
     def encode(self, sentences: List[str], batch_size: int = 8, show_progress_bar: bool = None) -> List[ndarray]:
         """
@@ -373,7 +382,7 @@ class SentenceTransformer(nn.Sequential):
 
                     features, labels = batch_to_device(data, self.device)
                     loss_value = loss_model(features, labels)
-                    self.log("Step %s/%s: Loss val: %s" % (global_step, num_train_steps, loss_value))
+                    self.log("train_loss", loss_value, "Step %s/%s: Loss val: %s" % (global_step, num_train_steps, loss_value))
 
                     if fp16:
                         with amp.scale_loss(loss_value, optimizer) as scaled_loss:
@@ -392,7 +401,7 @@ class SentenceTransformer(nn.Sequential):
 
                 if evaluation_steps > 0 and training_steps % evaluation_steps == 0:
                     score = self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps)
-                    self.log("Step %s/%s: Objective val: %s" % (global_step, num_train_steps, score))
+                    self.log("val_spearmann", score, "Step %s/%s: Objective val: %s" % (global_step, num_train_steps, score))
                     for loss_model in loss_models:
                         loss_model.zero_grad()
                         loss_model.train()
