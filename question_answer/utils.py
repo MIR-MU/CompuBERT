@@ -1,4 +1,5 @@
 from scipy.stats import zscore
+import numpy as np
 from sentence_transformers.readers import InputExample
 from sentence_transformers import SentencesDataset
 from torch.utils.data import DataLoader
@@ -21,7 +22,9 @@ def examples_from_questions(questions):
             continue
         all_q_upvotes = [a.score for a in q.answers]
         all_q_dists = upvotes_to_distance(all_q_upvotes)
-
+        if np.isnan(all_q_dists).any():
+            # skip the votes with equally-rated answers: these are mostly 0-votes: we do not know anything about
+            continue
         for a_i, a in enumerate(q.answers):
             yield InputExample("%s_%s" % (q_i, a_i), [q.body, a.body], all_q_dists[a_i])
 
