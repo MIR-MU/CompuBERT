@@ -102,12 +102,12 @@ class SentenceTransformer(nn.Sequential):
         self.device = torch.device(device)
         self.to(device)
         
-    def log(self, prefix=None, val=None, message=None):
+    def log(self, step, prefix=None, val=None, message=None):
         if self.logfile is not None and message is not None:
             print(message)
             print(message, file=self.logfile)
         if self.tboard_logger is not None and prefix is not None:
-            self.tboard_logger.add_scalar(prefix, val)
+            self.tboard_logger.add_scalar(prefix, val, step)
 
     def encode(self, sentences: List[str], batch_size: int = 8, show_progress_bar: bool = None) -> List[ndarray]:
         """
@@ -297,7 +297,7 @@ class SentenceTransformer(nn.Sequential):
         :param epochs:
         :param steps_per_epoch: Train for x steps in each epoch. If set to None, the length of the dataset will be used
         """
-        self.log(prefix=None, val=None, message=str(locals()))
+        self.log(step=None, prefix=None, val=None, message=str(locals()))
         
         if output_path is not None:
             os.makedirs(output_path, exist_ok=True)
@@ -384,7 +384,7 @@ class SentenceTransformer(nn.Sequential):
 
                     features, labels = batch_to_device(data, self.device)
                     loss_value = loss_model(features, labels)
-                    self.log("train_loss", loss_value.item(), "Step %s/%s: Loss val: %s" % (global_step, num_train_steps, loss_value.item()))
+                    self.log(global_step, "train_loss", loss_value.item(), "Step %s/%s: Loss val: %s" % (global_step, num_train_steps, loss_value.item()))
 
                     if fp16:
                         with amp.scale_loss(loss_value, optimizer) as scaled_loss:
@@ -403,7 +403,7 @@ class SentenceTransformer(nn.Sequential):
 
                 if evaluation_steps > 0 and training_steps % evaluation_steps == 0:
                     score = self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps)
-                    self.log("val_spearmann", score, "Step %s/%s: Objective val: %s" % (global_step, num_train_steps, score))
+                    self.log(global_step, "val_spearmann", score, "Step %s/%s: Objective val: %s" % (global_step, num_train_steps, score))
                     for loss_model in loss_models:
                         loss_model.zero_grad()
                         loss_model.train()
