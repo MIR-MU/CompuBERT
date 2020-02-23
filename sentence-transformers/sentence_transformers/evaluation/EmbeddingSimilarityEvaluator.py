@@ -21,7 +21,7 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
     The results are written in a CSV. If a CSV already exists, then values are appended.
     """
 
-
+ 
     def __init__(self, dataloader: DataLoader, main_similarity: SimilarityFunction = None, name: str = '',
                  show_progress_bar: bool = None, device=None):
         """
