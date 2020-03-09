@@ -1,38 +1,38 @@
-from torch.utils.data import RandomSampler
+from torch.utils.data import RandomSampler, DataLoader
 
 from ARQMathCode.post_reader_record import DataReaderRecord
-from question_answer.utils import examples_from_questions_tup, dataloader_from_examples
+from preproc.question_answer.polish_substituer import PolishSubstituer
+from question_answer.utils import examples_from_questions_tup
 from sentence_transformers import SentenceTransformer, losses, SentencesDataset
+import pickle
 
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
-
-from scipy.stats import zscore
-from sentence_transformers.readers import InputExample
-from sentence_transformers import SentencesDataset
-from torch.utils.data import DataLoader
-import numpy as np
 
 device = "cuda"
 
 model = SentenceTransformer('bert-base-wikipedia-sections-mean-tokens',
-                            logfile="train_sampled_eval4.log", tboard_logdir="train_sampled_eval4.tboard")
+                            logfile="train_sampled_eval5.log", tboard_logdir="train_sampled_eval5.tboard")
+# model = SentenceTransformer('/home/xstefan3/arqmath/compubert/out_whole', logfile="train_whole_sampled_eval.log")
 
 clef_home_directory_file_path = '/home/xstefan3/arqmath/data/Collection'
 dr = DataReaderRecord(clef_home_directory_file_path)
 # dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
-all_examples = list(examples_from_questions_tup(dr.post_parser.map_questions))
+postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv')
+
+postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
+
+all_examples = list(examples_from_questions_tup(postproc_questions))
 examples_len = len(all_examples)
 
 train_dev_test_split = (int(0.8*examples_len), int(0.9*examples_len))
 
-# model = SentenceTransformer('/home/xstefan3/arqmath/compubert/out_whole', logfile="train_whole_sampled_eval.log")
 
 train_data = SentencesDataset(all_examples[:train_dev_test_split[0]], model, show_progress_bar=True)
 train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
 
 dev_data = SentencesDataset(all_examples[train_dev_test_split[0]:train_dev_test_split[1]], model, show_progress_bar=True)
-dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=1000)
+dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=2000)
 dev_loader = DataLoader(dev_data, batch_size=16, sampler=dev_sampler)
 
 train_loss = losses.CosineSimilarityLoss(model=model)
