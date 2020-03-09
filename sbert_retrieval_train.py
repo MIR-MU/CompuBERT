@@ -27,8 +27,11 @@ examples_len = len(all_examples)
 
 train_dev_test_split = (int(0.8*examples_len), int(0.9*examples_len))
 
-
+# single-time preprocessing support
 train_data = SentencesDataset(all_examples[:train_dev_test_split[0]], model, show_progress_bar=True)
+pickle.dump(train_data, open("train_data.pkl", "wb"))
+# train_data = pickle.load(open("train_data.pkl", "rb"))
+
 train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
 
 dev_data = SentencesDataset(all_examples[train_dev_test_split[0]:train_dev_test_split[1]], model, show_progress_bar=True)
