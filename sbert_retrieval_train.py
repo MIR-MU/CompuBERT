@@ -1,7 +1,7 @@
 from torch.utils.data import RandomSampler
 
 from ARQMathCode.post_reader_record import DataReaderRecord
-from question_answer.utils import examples_from_questions, dataloader_from_examples
+from question_answer.utils import examples_from_questions_tup, dataloader_from_examples
 from sentence_transformers import SentenceTransformer, losses, SentencesDataset
 
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
@@ -21,7 +21,7 @@ clef_home_directory_file_path = '/home/xstefan3/arqmath/data/Collection'
 dr = DataReaderRecord(clef_home_directory_file_path)
 # dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
-all_examples = list(examples_from_questions(dr.post_parser.map_questions))
+all_examples = list(examples_from_questions_tup(dr.post_parser.map_questions))
 examples_len = len(all_examples)
 
 train_dev_test_split = (int(0.8*examples_len), int(0.9*examples_len))

@@ -1,8 +1,12 @@
+from typing import List, Tuple
+
 from scipy.stats import zscore
 import numpy as np
 from sentence_transformers.readers import InputExample
 from sentence_transformers import SentencesDataset
 from torch.utils.data import DataLoader
+
+from ARQMathCode.Entities.Post import Question
 
 
 def upvotes_to_distance(all_q_votes):
@@ -14,8 +18,8 @@ def upvotes_to_distance(all_q_votes):
     return z_vals_norm
 
 
-def examples_from_questions(questions):
-    for q_i, q in questions.items():
+def examples_from_questions_tup(questions: Tuple[int, Question]):
+    for q_i, q in questions:
         if q_i % 10000 == 0:
             print("Loading %s" % q_i)
         if q.answers is None:
@@ -29,6 +33,11 @@ def examples_from_questions(questions):
             yield InputExample("%s_%s" % (q_i, a_i), [q.body, a.body], all_q_dists[a_i])
 
 
-def dataloader_from_examples(examples, model, batch_size, shuffle):
+def examples_for_q_answers(q_text: str, a_texts: List[str], a_dists=List[float]):
+    for a_text, a_dist in zip(a_texts, a_dists):
+        yield InputExample("Infer_example", [q_text, a_text], a_dist)
+
+
+def dataloader_from_examples(examples, model, batch_size=8, shuffle=False):
     train_data = SentencesDataset(examples, model, show_progress_bar=True)
     return DataLoader(train_data, shuffle=shuffle, batch_size=batch_size)
