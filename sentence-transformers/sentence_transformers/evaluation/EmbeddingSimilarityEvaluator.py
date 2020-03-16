@@ -4,12 +4,13 @@ from torch.utils.data import DataLoader
 import torch
 import logging
 from tqdm import tqdm
-from ..util import batch_to_device
+from ..util import paired_embeddings_for_dataloader
 import os
 import csv
 from sklearn.metrics.pairwise import paired_cosine_distances, paired_euclidean_distances, paired_manhattan_distances
 from scipy.stats import pearsonr, spearmanr
 import numpy as np
+
 
 class EmbeddingSimilarityEvaluator(SentenceEvaluator):
     """
@@ -21,7 +22,6 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
     The results are written in a CSV. If a CSV already exists, then values are appended.
     """
 
- 
     def __init__(self, dataloader: DataLoader, main_similarity: SimilarityFunction = None, name: str = '',
                  show_progress_bar: bool = None, device=None):
         """
@@ -74,14 +74,7 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
         if self.show_progress_bar:
             iterator = tqdm(iterator, desc="Convert Evaluating")
 
-        for step, batch in enumerate(iterator):
-            features, label_ids = batch_to_device(batch, self.device)
-            with torch.no_grad():
-                emb1, emb2 = [model(sent_features)['sentence_embedding'].to("cpu").numpy() for sent_features in features]
-
-            labels.extend(label_ids.to("cpu").numpy())
-            embeddings1.extend(emb1)
-            embeddings2.extend(emb2)
+        embeddings1, embeddings2, labels = paired_embeddings_for_dataloader(self.device, model, iterator)
 
         try:
             cosine_scores = 1 - (paired_cosine_distances(embeddings1, embeddings2))
@@ -93,7 +86,6 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
         manhattan_distances = -paired_manhattan_distances(embeddings1, embeddings2)
         euclidean_distances = -paired_euclidean_distances(embeddings1, embeddings2)
         dot_products = [np.dot(emb1, emb2) for emb1, emb2 in zip(embeddings1, embeddings2)]
-
 
         eval_pearson_cosine, _ = pearsonr(labels, cosine_scores)
         eval_spearman_cosine, _ = spearmanr(labels, cosine_scores)
@@ -126,7 +118,6 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
 
                 writer.writerow([epoch, steps, eval_pearson_cosine, eval_spearman_cosine, eval_pearson_euclidean,
                                  eval_spearman_euclidean, eval_pearson_manhattan, eval_spearman_manhattan, eval_pearson_dot, eval_spearman_dot])
-
 
         if self.main_similarity == SimilarityFunction.COSINE:
             return eval_spearman_cosine

@@ -19,10 +19,10 @@ dr = DataReaderRecord(clef_home_directory_file_path)
 # dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
 postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv')
-
 postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
 
 all_examples = list(examples_from_questions_tup(postproc_questions))
+# all_examples = list(examples_from_questions_tup(dr.post_parser.map_questions))
 examples_len = len(all_examples)
 
 train_dev_test_split = (int(0.8*examples_len), int(0.9*examples_len))
