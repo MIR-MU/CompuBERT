@@ -18,7 +18,7 @@ clef_home_directory_file_path = '/home/xstefan3/arqmath/data/Collection'
 dr = DataReaderRecord(clef_home_directory_file_path)
 # dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
-postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv')
+postprocessor = PolishSubstituer('/home/xstefan3/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv')
 postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
 
 all_examples = list(examples_from_questions_tup(postproc_questions))

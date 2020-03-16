@@ -3,11 +3,11 @@ from torch import nn, Tensor
 from typing import Union, Tuple, List, Iterable, Dict
 from ..SentenceTransformer import SentenceTransformer
 
+
 class CosineSimilarityLoss(nn.Module):
     def __init__(self, model: SentenceTransformer):
         super(CosineSimilarityLoss, self).__init__()
         self.model = model
-
 
     def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
         reps = [self.model(sentence_feature)['sentence_embedding'] for sentence_feature in sentence_features]
