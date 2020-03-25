@@ -11,6 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from . import SentenceTransformer
 from .readers.InputExample import InputExample
+import multiprocessing
 
 
 class SentencesDataset(Dataset):
@@ -20,6 +21,9 @@ class SentencesDataset(Dataset):
     The SentenceBertEncoder.smart_batching_collate is required for this to work.
     SmartBatchingDataset does *not* work without it.
     """
+    tokens = None
+    labels = None
+
     def __init__(self, examples: List[InputExample], model: SentenceTransformer, show_progress_bar: bool = None):
         """
         Create a new SentencesDataset with the tokenized texts and the labels as Tensor
@@ -29,6 +33,12 @@ class SentencesDataset(Dataset):
         self.show_progress_bar = show_progress_bar
 
         self.convert_input_examples(examples, model)
+
+    @staticmethod
+    def convert_single_example(args):
+        example, model = args
+        tokenized_texts = [model.tokenize(text) for text in example.texts]
+        return tokenized_texts + [example.label]
 
     def convert_input_examples(self, examples: List[InputExample], model: SentenceTransformer):
         """
@@ -45,40 +55,42 @@ class SentencesDataset(Dataset):
             for the DataLoader
         """
         num_texts = len(examples[0].texts)
-        inputs = [[] for _ in range(num_texts)]
-        labels = []
-        too_long = [0] * num_texts
         label_type = None
-        iterator = examples
-        max_seq_length = model.get_max_seq_length()
+        iterator = list(zip(examples, [model]*len(examples)))
 
         if self.show_progress_bar:
             iterator = tqdm(iterator, desc="Convert dataset")
 
-        for ex_index, example in enumerate(iterator):
-            if label_type is None:
-                if isinstance(example.label, int):
-                    label_type = torch.long
-                elif isinstance(example.label, float):
-                    label_type = torch.float
-            tokenized_texts = [model.tokenize(text) for text in example.texts]
+        # for ex_index, example in enumerate(iterator):
+        #     if label_type is None:
+        #         if isinstance(example.label, int):
+        #             label_type = torch.long
+        #         elif isinstance(example.label, float):
+        #             label_type = torch.float
+        #     tokenized_texts = [model.tokenize(text) for text in example.texts]
+        #
+        #     for i, token in enumerate(tokenized_texts):
+        #         if max_seq_length != None and max_seq_length > 0 and len(token) >= max_seq_length:
+        #             too_long[i] += 1
+        #
+        #     labels.append(example.label)
+        #     for i in range(num_texts):
+        #         inputs[i].append(tokenized_texts[i])
+        cpus = multiprocessing.cpu_count()
+        pool = multiprocessing.Pool(processes=cpus)
 
-            for i, token in enumerate(tokenized_texts):
-                if max_seq_length != None and max_seq_length > 0 and len(token) >= max_seq_length:
-                    too_long[i] += 1
+        out = pool.map(self.convert_single_example, iterator)
+        self.tokens = np.array([o[:-1] for o in out]).transpose()
 
-            labels.append(example.label)
-            for i in range(num_texts):
-                inputs[i].append(tokenized_texts[i])
+        if label_type is None:
+            if isinstance(examples[0].label, int):
+                label_type = torch.long
+            elif isinstance(examples[0].label, float):
+                label_type = torch.float
 
-        tensor_labels = torch.tensor(labels, dtype=label_type)
+        self.labels = torch.tensor([o[-1] for o in out], dtype=label_type)
 
         logging.info("Num sentences: %d" % (len(examples)))
-        for i in range(num_texts):
-            logging.info("Sentences {} longer than max_seqence_length: {}".format(i, too_long[i]))
-
-        self.tokens = inputs
-        self.labels = tensor_labels
 
     def __getitem__(self, item):
         return [self.tokens[i][item] for i in range(len(self.tokens))], self.labels[item]
