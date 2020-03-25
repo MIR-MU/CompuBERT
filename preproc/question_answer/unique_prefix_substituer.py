@@ -15,6 +15,7 @@ class UniquePrefixSubstituer:
     matching_template = '<span class="math-container" id="%s">'
     formulas_map = dict()
     alias_map = dict()
+    unicode_iter_start = 800
 
     def __init__(self, preproc_formulas_tsv: str, exclude_vocab_path: str):
         with open(preproc_formulas_tsv, "r") as tsv_f:
@@ -22,7 +23,7 @@ class UniquePrefixSubstituer:
                 line_parts = line.split("\t")
                 self.formulas_map[int(line_parts[0])] = line_parts[-1]
 
-        self.exclude_vocab_list = list(map(str.strip, open(exclude_vocab_path, "r").readlines()))
+        self.exclude_vocab_list = [v for v in map(str.strip, open(exclude_vocab_path, "r").readlines()) if len(v) == 1]
 
     @staticmethod
     def _drop_xml_tags(body: str):
@@ -35,9 +36,10 @@ class UniquePrefixSubstituer:
         return ' '.join(noformula_parts)
 
     def _get_first_unused_utf8(self) -> str:
-        for utf_i in range(800, int(10e6)):
+        for utf_i in range(self.unicode_iter_start, int(10e6)):
             symbol = chr(utf_i)
             if symbol not in self.exclude_vocab_list and symbol not in self.alias_map.values():
+                self.unicode_iter_start  = utf_i
                 return symbol
         raise ValueError("Run out of Unicode symbols :(")
 
