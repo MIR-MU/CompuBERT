@@ -95,5 +95,3 @@ class UniquePrefixSubstituer:
 
         tokenizer.add_tokens(list(self.alias_map.keys()))
         bert.resize_token_embeddings()
-        model._modules['0'].tokenizer.add_tokens(list(self.alias_map.keys()))
-        model._modules['0'].resize_token_embeddings()
