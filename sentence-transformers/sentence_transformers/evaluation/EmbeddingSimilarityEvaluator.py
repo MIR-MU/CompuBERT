@@ -1,3 +1,5 @@
+from typing import Callable
+
 from . import SentenceEvaluator, SimilarityFunction
 from torch.utils.data import DataLoader
 
@@ -52,7 +54,8 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
         self.csv_file: str = "similarity_evaluation"+name+"_results.csv"
         self.csv_headers = ["epoch", "steps", "cosine_pearson", "cosine_spearman", "euclidean_pearson", "euclidean_spearman", "manhattan_pearson", "manhattan_spearman", "dot_pearson", "dot_spearman"]
 
-    def __call__(self, model: 'SequentialSentenceEmbedder', output_path: str = None, epoch: int = -1, steps: int = -1) -> float:
+    def __call__(self, model: 'SequentialSentenceEmbedder', output_path: str = None, epoch: int = -1, steps: int = -1,
+                 additional_evaluator: Callable[[], float] = None) -> float:
         model.eval()
         embeddings1 = []
         embeddings2 = []
@@ -108,6 +111,10 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
         logging.info("Dot-Product-Similarity:\tPearson: {:.4f}\tSpearman: {:.4f}".format(
             eval_pearson_dot, eval_spearman_dot))
 
+        if additional_evaluator is not None:
+            additional_val = additional_evaluator()
+            logging.info("Additional eval value: {:.4f}".format(additional_val))
+
         if output_path is not None:
             csv_path = os.path.join(output_path, self.csv_file)
             output_file_exists = os.path.isfile(csv_path)
@@ -115,9 +122,14 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
                 writer = csv.writer(f)
                 if not output_file_exists:
                     writer.writerow(self.csv_headers)
-
+                out_row = [epoch, steps, eval_pearson_cosine, eval_spearman_cosine, eval_pearson_euclidean,
+                                 eval_spearman_euclidean, eval_pearson_manhattan, eval_spearman_manhattan, eval_pearson_dot, eval_spearman_dot]
+                if additional_evaluator is not None:
+                    out_row += additional_val
                 writer.writerow([epoch, steps, eval_pearson_cosine, eval_spearman_cosine, eval_pearson_euclidean,
                                  eval_spearman_euclidean, eval_pearson_manhattan, eval_spearman_manhattan, eval_pearson_dot, eval_spearman_dot])
+        if additional_evaluator is not None:
+            return additional_val
 
         if self.main_similarity == SimilarityFunction.COSINE:
             return eval_spearman_cosine
