@@ -70,7 +70,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         reader = TopicReader(eval_xml_path)
         return {reader.topic_map[t_key]: str(t_vals.question) for t_key, t_vals in reader.map_topics.items()}
 
-    def add_to_index(self, questions: Tuple[int, Iterable[Question]]):
+    def add_to_index(self, questions: Tuple[int, Iterable[Question]], infer_batch=32):
         # index only certain topics, or everything?
         # -> Index everything
         batch_index = []
@@ -86,7 +86,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
                 batch_index.append(a.post_id)
                 batch_type.append(0)
                 batch_sents.append(a.body)
-        batch_embs = self.model.encode(batch_sents, show_progress_bar=True)
+        batch_embs = self.model.encode(batch_sents, show_progress_bar=True, batch_size=infer_batch)
         batch_out = np.concatenate(([batch_index], [batch_type]), axis=0)
         self.index = np.concatenate((self.index, batch_out), axis=1)
         for i, emb in enumerate(batch_embs):
