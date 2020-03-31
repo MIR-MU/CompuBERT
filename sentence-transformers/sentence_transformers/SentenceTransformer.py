@@ -130,7 +130,7 @@ class SentenceTransformer(nn.Sequential):
 
         iterator = range(0, len(sentences), batch_size)
         if show_progress_bar:
-            iterator = tqdm(iterator, desc="Batches")
+            iterator = tqdm(iterator, desc="Computing embeddings")
 
         for batch_idx in iterator:
             batch_tokens = []

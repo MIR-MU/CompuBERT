@@ -54,6 +54,8 @@ class DataReaderRecord:
         #                                     self.post_history_parser, limit_posts)
 
         self.post_parser = PostParserRecord(post_file_path, limit_to_first_n=limit_posts)
+        # self.post_parser = PostParserRecord(post_file_path, limit_to_first_n=limit_posts,
+        #                                     map_related_post=self.post_link_parser.map_related_posts)
 
     def get_list_of_questions_posted_in_a_year(self, year):
         """
