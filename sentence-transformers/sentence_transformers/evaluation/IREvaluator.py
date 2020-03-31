@@ -105,7 +105,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         ranked_results, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results, include_distances=True)
         return dict(zip(map(str, ranked_results), dists))
 
-    def __call__(self, *args, **kwargs) -> float:
+    def __call__(self, *args, eval_all_metrics=False, **kwargs) -> float:
         if not self.finalized_index:
             self.finalize_index()
 
@@ -114,7 +114,9 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
         def trec_metric_f():
             results_each = self.evaluator.evaluate(questions_predicted_nns)
-
             return float(np.mean([v[self.trec_metric] for v in results_each.values()]))
 
-        return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
+        if eval_all_metrics:
+            return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
+        else:
+            return trec_metric_f()
