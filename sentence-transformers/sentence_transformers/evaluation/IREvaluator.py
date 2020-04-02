@@ -28,9 +28,9 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
                          2: 3163489,
                          3: 3237032}
 
-    def __init__(self, model: SentenceTransformer, dataloader: DataLoader, rel_judgements_file: str, trec_metric="ndcg",
-                 eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml",
-                 main_similarity: SimilarityFunction = None, name: str = '', show_progress_bar: bool = None, device=None):
+    def __init__(self, model: SentenceTransformer, dataloader: DataLoader, rel_judgements_file: str,
+                 eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
+                 name: str = '', show_progress_bar: bool = None, device=None):
         """
         Constructs an evaluator based for the dataset
 

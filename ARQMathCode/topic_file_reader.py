@@ -23,8 +23,8 @@ class TopicReader:
     """
 
     topic_map = {"A.31": 1,
-                 "A.78": 2,
-                 "A.101": 3}
+                 "A.78": 3,
+                 "A.101": 2}
 
     def __init__(self, topic_file_path):
         self.map_topics = self.__read_topics(topic_file_path)
