@@ -24,9 +24,6 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     finalized_index = False
 
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
-    rel_questions_map = {1: 3082747,
-                         2: 3163489,
-                         3: 3237032}
 
     def __init__(self, model: SentenceTransformer, dataloader: DataLoader, rel_judgements_file: str,
                  eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
@@ -54,7 +51,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             for ln in f.readlines():
                 l_content = [item.strip() for item in ln.split("\t")]
                 try:
-                    q = self.rel_questions_map[int(l_content[0])]
+                    q = int(l_content[0])
                     try:
                         self.judgements[str(q)][l_content[2]] = int(l_content[-1])
                     except KeyError:
@@ -105,7 +102,8 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     def _get_ranked_list(self, question_body: str, no_ranked_results=int(10e5)):
         # return the most similar answers for a body of given piece of text
         question_emb = self.model.encode([question_body])[0]
-        ranked_results, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results, include_distances=True)
+        ranked_results, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results,
+                                                                   include_distances=True)
         return dict(zip(map(str, ranked_results), dists))
 
     def __call__(self, *args, eval_all_metrics=False, **kwargs) -> float:
@@ -113,7 +111,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             self.finalize_index()
 
         # question_bodies = {k: question_bodies[v] for k, v in self.rel_questions_map}
-        questions_predicted_nns = {str(self.rel_questions_map[k]): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
+        questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
 
         def trec_metric_f():
             results_each = self.evaluator.evaluate(questions_predicted_nns)
