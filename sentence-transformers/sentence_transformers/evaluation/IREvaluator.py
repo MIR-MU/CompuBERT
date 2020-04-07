@@ -2,11 +2,14 @@ from typing import Tuple, Iterable
 
 import numpy as np
 from annoy import AnnoyIndex
-from pytrec_eval import RelevanceEvaluator
+# from pytrec_eval import RelevanceEvaluator
+from arqmath_eval import get_judged_documents
 from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader
+from copy import deepcopy
 
 from ARQMathCode.Entities.Post import Question
+from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
 from ARQMathCode.topic_file_reader import TopicReader
 from . import SimilarityFunction, EmbeddingSimilarityEvaluator
 
@@ -25,7 +28,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
-    def __init__(self, model: SentenceTransformer, dataloader: DataLoader, rel_judgements_file: str,
+    def __init__(self, model: SentenceTransformer, dataloader: DataLoader,
                  eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
                  name: str = '', show_progress_bar: bool = None, device=None):
         """
@@ -45,20 +48,20 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         self.index = np.empty(shape=(2, 0))
         self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension())
 
-        self.judgements = dict()
-        # evaluator init
-        with open(rel_judgements_file, "r") as f:
-            for ln in f.readlines():
-                l_content = [item.strip() for item in ln.split("\t")]
-                try:
-                    q = int(l_content[0])
-                    try:
-                        self.judgements[str(q)][l_content[2]] = int(l_content[-1])
-                    except KeyError:
-                        self.judgements[str(q)] = {l_content[2]: int(l_content[-1])}
-                except KeyError:
-                    raise KeyError("Key %s not found in rel_questions_map" % l_content[0])
-        self.evaluator = RelevanceEvaluator(self.judgements, measures={trec_metric})
+        # self.judgements = dict()
+        # # evaluator init
+        # with open(rel_judgements_file, "r") as f:
+        #     for ln in f.readlines():
+        #         l_content = [item.strip() for item in ln.split("\t")]
+        #         try:
+        #             q = int(l_content[0])
+        #             try:
+        #                 self.judgements[str(q)][l_content[2]] = int(l_content[-1])
+        #             except KeyError:
+        #                 self.judgements[str(q)] = {l_content[2]: int(l_content[-1])}
+        #         except KeyError:
+        #             raise KeyError("Key %s not found in rel_questions_map" % l_content[0])
+        # self.evaluator = RelevanceEvaluator(self.judgements, measures={trec_metric})
         self.trec_metric = trec_metric
         self.eval_texts = self._eval_texts_from_xml(eval_topics_path)
 
@@ -74,9 +77,10 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         batch_type = []
         batch_sents = []
         for q_i, q in questions:
-            batch_index.append(q_i)
-            batch_type.append(1)
-            batch_sents.append(q.body)
+            # 'questions' are never in relevant judgements as answers
+            # batch_index.append(q_i)
+            # batch_type.append(1)
+            # batch_sents.append(q.body)
             if q.answers is None:
                 continue
             for a in q.answers:
@@ -94,6 +98,12 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             self.finalized_index = True
         return batch_index
 
+    def index_judged_questions(self, post_parser: PostParserRecord):
+        relevant_qs = dict()
+        for relevant_qi in get_judged_documents("task1"):
+            relevant_qs[relevant_qi] = post_parser.map_questions[post_parser.map_just_answers[int(relevant_qi)].parent_id]
+        self.add_to_index(relevant_qs.items())
+
     def finalize_index(self, annoy_trees=100):
         self.annoy_index.build(annoy_trees)
         self.finalized_index = True
@@ -110,12 +120,11 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         if not self.finalized_index:
             self.finalize_index()
 
-        # question_bodies = {k: question_bodies[v] for k, v in self.rel_questions_map}
-        questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
+        self.questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
 
         def trec_metric_f():
-            results_each = self.evaluator.evaluate(questions_predicted_nns)
-            return float(np.mean([v[self.trec_metric] for v in results_each.values()]))
+            from arqmath_eval import ndcg
+            return ndcg(deepcopy(self.questions_predicted_nns))
 
         if eval_all_metrics:
             return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
