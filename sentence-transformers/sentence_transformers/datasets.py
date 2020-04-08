@@ -106,7 +106,7 @@ class SentencesDataset(Dataset):
 
         out_triples = self.convert_texts_parallel(iterator, tokenizer=model._modules["0"].tokenizer)
         tokens1, tokens2, labels = zip(*out_triples)
-        self.tokens = np.array(list(zip(tokens1, tokens2)))
+        self.tokens = np.array(list(zip(tokens1, tokens2))).transpose()
         self.labels = torch.tensor(labels, dtype=label_type)
 
         logging.info("Num converted sentences: %d" % (len(tokens1)))
