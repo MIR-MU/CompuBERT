@@ -38,17 +38,11 @@ class SentencesDataset(Dataset):
         self.convert_input_examples(examples, model)
 
     @staticmethod
-    def convert_single_example(args):
-        example, tokenizer = args
-        tokenized_texts = [tokenizer.tokenize(text) for text in example.texts]
-        return tokenized_texts + [example.label]
-
-    @staticmethod
     def convert_chunk_examples(args_iter: Iterable):
         out_chunk = []
         examples, tokenizer = args_iter
         for example in tqdm(examples, "Chunk tokenize"):
-            tokenized_texts = [tokenizer.tokenize(text) for text in example.texts]
+            tokenized_texts = [tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text)) for text in example.texts]
             out_chunk.append(tokenized_texts + [example.label])
         return out_chunk
 
