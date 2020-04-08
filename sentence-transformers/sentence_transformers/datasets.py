@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from . import SentenceTransformer
 from .readers.InputExample import InputExample
-import multiprocessing
+import pathos.multiprocessing as multiprocessing
 
 
 class SentencesDataset(Dataset):
@@ -36,8 +36,8 @@ class SentencesDataset(Dataset):
 
     @staticmethod
     def convert_single_example(args):
-        example, model = args
-        tokenized_texts = [model.tokenize(text) for text in example.texts]
+        example, tokenizer = args
+        tokenized_texts = [tokenizer.tokenize(text) for text in example.texts]
         return tokenized_texts + [example.label]
 
     def convert_input_examples(self, examples: List[InputExample], model: SentenceTransformer):
@@ -54,9 +54,8 @@ class SentencesDataset(Dataset):
         :return: a SmartBatchingDataset usable to train the model with SentenceTransformer.smart_batching_collate as the collate_fn
             for the DataLoader
         """
-        num_texts = len(examples[0].texts)
         label_type = None
-        iterator = list(zip(examples, [model]*len(examples)))
+        iterator = list(zip(examples, [model._modules['0'].tokenizer]*len(examples)))
 
         if self.show_progress_bar:
             iterator = tqdm(iterator, desc="Convert dataset")
