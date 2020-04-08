@@ -101,7 +101,11 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     def index_judged_questions(self, post_parser: PostParserRecord, reload_embs_dir=False):
         relevant_qs = dict()
         for relevant_qi in get_judged_documents("task1"):
-            parent_id = post_parser.map_just_answers[int(relevant_qi)].parent_id
+            try:
+                parent_id = post_parser.map_just_answers[int(relevant_qi)].parent_id
+            except KeyError as e:
+                print("IREvaluator error: judged answer %s was not loaded and can not be evaluated" % relevant_qi)
+                raise e
             relevant_qs[parent_id] = post_parser.map_questions[parent_id]
         self.add_to_index(relevant_qs.items(), reload_embs_dir=reload_embs_dir)
 

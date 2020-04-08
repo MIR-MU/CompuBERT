@@ -11,13 +11,13 @@ from sentence_transformers import SentenceTransformer, losses, SentencesDataset
 from sentence_transformers.evaluation import IREvaluator
 # from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
-device = "cpu"
+device = "cuda"
 
 # model = SentenceTransformer('bert-base-wikipedia-sections-mean-tokens', device=device)
 model = SentenceTransformer('/data/arqmath/models/train_sampled_eval9', device=device)
 
 clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
-dr = DataReaderRecord(clef_home_directory_file_path)
+dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=10000)
 
 # postprocessor = UniquePrefixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv',
 #                                        "/home/michal/Documents/projects/arqmath/compubert/question_answer/out/0_BERT/vocab.txt")
@@ -40,7 +40,7 @@ examples_len = len(all_examples)
 
 # train_loader = DataLoader(train_data, batch_size=2, shuffle=True)
 
-dev_data = SentencesDataset(all_examples[:100], model, show_progress_bar=True)
+dev_data = SentencesDataset(all_examples[:10000], model, show_progress_bar=True)
 dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=15)
 dev_loader = DataLoader(dev_data, batch_size=2, sampler=dev_sampler)
 

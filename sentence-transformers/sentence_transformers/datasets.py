@@ -2,8 +2,11 @@
 This files contains various pytorch dataset classes, that provide
 data to the Transformer model
 """
+from copy import deepcopy
+import math
+
 from torch.utils.data import Dataset
-from typing import List
+from typing import List, Iterable
 import bisect
 import torch
 import logging
@@ -40,6 +43,32 @@ class SentencesDataset(Dataset):
         tokenized_texts = [tokenizer.tokenize(text) for text in example.texts]
         return tokenized_texts + [example.label]
 
+    @staticmethod
+    def convert_chunk_examples(args_iter: Iterable):
+        out_chunk = []
+        examples, tokenizer = args_iter
+        for example in tqdm(examples, "Chunk tokenize"):
+            tokenized_texts = [tokenizer.tokenize(text) for text in example.texts]
+            out_chunk.append(tokenized_texts + [example.label])
+        return out_chunk
+
+    @staticmethod
+    def _chunk_examples(examples: List[InputExample], target_chunks: int):
+        chunk_size = math.floor(len(examples)/target_chunks)
+        for chunk_start in range(0, len(examples)+chunk_size, chunk_size):
+            yield examples[chunk_start:chunk_start+chunk_size]
+
+    @staticmethod
+    def convert_texts_parallel(examples: List[InputExample], tokenizer):
+        no_proc = multiprocessing.cpu_count()
+        chunks = zip(SentencesDataset._chunk_examples(list(examples), no_proc),
+                     [deepcopy(tokenizer) for _ in range(no_proc)])
+        pool = multiprocessing.Pool(processes=no_proc)
+        out_chunks = pool.map(SentencesDataset.convert_chunk_examples, chunks)
+        for out_chunk in out_chunks:
+            for out_item in out_chunk:
+                yield out_item[0], out_item[1], out_item[2]
+
     def convert_input_examples(self, examples: List[InputExample], model: SentenceTransformer):
         """
         Converts input examples to a SmartBatchingDataset usable to train the model with
@@ -55,10 +84,10 @@ class SentencesDataset(Dataset):
             for the DataLoader
         """
         label_type = None
-        iterator = list(zip(examples, [model._modules['0'].tokenizer]*len(examples)))
+        iterator = examples
 
-        if self.show_progress_bar:
-            iterator = tqdm(iterator, desc="Convert dataset")
+        # if self.show_progress_bar:
+        #     iterator = tqdm(iterator, desc="Convert dataset")
 
         # for ex_index, example in enumerate(iterator):
         #     if label_type is None:
@@ -75,21 +104,18 @@ class SentencesDataset(Dataset):
         #     labels.append(example.label)
         #     for i in range(num_texts):
         #         inputs[i].append(tokenized_texts[i])
-        cpus = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(processes=cpus)
-
-        out = pool.map(self.convert_single_example, iterator)
-        self.tokens = np.array([o[:-1] for o in out]).transpose()
-
         if label_type is None:
             if isinstance(examples[0].label, int):
                 label_type = torch.long
             elif isinstance(examples[0].label, float):
                 label_type = torch.float
 
-        self.labels = torch.tensor([o[-1] for o in out], dtype=label_type)
+        out_triples = self.convert_texts_parallel(iterator, tokenizer=model._modules["0"].tokenizer)
+        tokens1, tokens2, labels = zip(*out_triples)
+        self.tokens = np.array(list(zip(tokens1, tokens2)))
+        self.labels = torch.tensor(labels, dtype=label_type)
 
-        logging.info("Num sentences: %d" % (len(examples)))
+        logging.info("Num converted sentences: %d" % (len(tokens1)))
 
     def __getitem__(self, item):
         return [self.tokens[i][item] for i in range(len(self.tokens))], self.labels[item]
