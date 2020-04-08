@@ -1,3 +1,4 @@
+import datetime
 from typing import Tuple, Iterable
 
 import numpy as np
@@ -5,8 +6,6 @@ from annoy import AnnoyIndex
 from arqmath_eval import get_judged_documents
 from arqmath_eval import ndcg
 from sentence_transformers import SentenceTransformer
-from torch.utils.data import DataLoader
-import datetime
 
 from ARQMathCode.Entities.Post import Question
 from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
@@ -28,7 +27,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
-    def __init__(self, model: SentenceTransformer,
+    def __init__(self, model: SentenceTransformer, post_parser: PostParserRecord,
                  eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
                  name: str = '', show_progress_bar: bool = None, device=None):
         """
@@ -36,13 +35,12 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
         The labels need to indicate the similarity between the sentences.
 
-        :param dataloader:
-            the data for the evaluation
         :param main_similarity:
             the similarity metric that will be used for the returned score
         """
         super().__init__(main_similarity, name, show_progress_bar, device)
         self.model = model
+        self.post_parser = post_parser
         # shape = (post_id, is_question, <embeddings>)
         # index init
         self.index = np.empty(shape=(2, 0))
@@ -98,16 +96,21 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             self.finalized_index = True
         return batch_index
 
-    def index_judged_questions(self, post_parser: PostParserRecord, reload_embs_dir=False):
+    def index_judged_questions(self, reload_embs_dir=False):
         relevant_qs = dict()
         for relevant_qi in get_judged_documents("task1"):
             try:
-                parent_id = post_parser.map_just_answers[int(relevant_qi)].parent_id
+                parent_id = self.post_parser.map_just_answers[int(relevant_qi)].parent_id
             except KeyError as e:
                 print("IREvaluator error: judged answer %s was not loaded and can not be evaluated" % relevant_qi)
                 raise e
-            relevant_qs[parent_id] = post_parser.map_questions[parent_id]
+            relevant_qs[parent_id] = self.post_parser.map_questions[parent_id]
         self.add_to_index(relevant_qs.items(), reload_embs_dir=reload_embs_dir)
+
+    def clear_index(self):
+        self.annoy_index.unload()
+        self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension())
+        self.finalized_index = False
 
     def finalize_index(self, annoy_trees=100, out_file=None):
         self.annoy_index.build(annoy_trees)
@@ -133,7 +136,10 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         similarity_dict = self._postproc_scores(dists_dict)
         return similarity_dict
 
-    def __call__(self, *args, eval_all_metrics=False, **kwargs) -> float:
+    def __call__(self, *args, eval_all_metrics=False, reindex=True, **kwargs) -> float:
+        if reindex:
+            self.clear_index()
+            self.index_judged_questions()
         if not self.finalized_index:
             self.finalize_index()
 
