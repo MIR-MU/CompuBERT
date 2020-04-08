@@ -2,11 +2,11 @@ from typing import Tuple, Iterable
 
 import numpy as np
 from annoy import AnnoyIndex
-# from pytrec_eval import RelevanceEvaluator
 from arqmath_eval import get_judged_documents
+from arqmath_eval import ndcg
 from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader
-from copy import deepcopy
+import datetime
 
 from ARQMathCode.Entities.Post import Question
 from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
@@ -28,7 +28,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
-    def __init__(self, model: SentenceTransformer, dataloader: DataLoader,
+    def __init__(self, model: SentenceTransformer,
                  eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
                  name: str = '', show_progress_bar: bool = None, device=None):
         """
@@ -41,7 +41,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         :param main_similarity:
             the similarity metric that will be used for the returned score
         """
-        super().__init__(dataloader, main_similarity, name, show_progress_bar, device)
+        super().__init__(main_similarity, name, show_progress_bar, device)
         self.model = model
         # shape = (post_id, is_question, <embeddings>)
         # index init
@@ -68,7 +68,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     @staticmethod
     def _eval_texts_from_xml(eval_xml_path):
         reader = TopicReader(eval_xml_path)
-        return {reader.topic_map[t_key]: str(t_vals.question) for t_key, t_vals in reader.map_topics.items()}
+        return {t_key: str(t_vals.question) for t_key, t_vals in reader.map_topics.items()}
 
     def add_to_index(self, questions: Tuple[int, Iterable[Question]], infer_batch=32, reload_embs_dir=False):
         # index only certain topics, or everything?
@@ -98,23 +98,36 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             self.finalized_index = True
         return batch_index
 
-    def index_judged_questions(self, post_parser: PostParserRecord):
+    def index_judged_questions(self, post_parser: PostParserRecord, reload_embs_dir=False):
         relevant_qs = dict()
         for relevant_qi in get_judged_documents("task1"):
-            relevant_qs[relevant_qi] = post_parser.map_questions[post_parser.map_just_answers[int(relevant_qi)].parent_id]
-        self.add_to_index(relevant_qs.items())
+            parent_id = post_parser.map_just_answers[int(relevant_qi)].parent_id
+            relevant_qs[parent_id] = post_parser.map_questions[parent_id]
+        self.add_to_index(relevant_qs.items(), reload_embs_dir=reload_embs_dir)
 
-    def finalize_index(self, annoy_trees=100):
+    def finalize_index(self, annoy_trees=100, out_file=None):
         self.annoy_index.build(annoy_trees)
         self.finalized_index = True
-        self.annoy_index.save("annoy_t10.pkl")
+        if out_file is None:
+            out_file = "annoy_index_%s_%s_items.pkl" % (str(datetime.date.today()), len(self.index[0]))
+        self.annoy_index.save(out_file)
+
+    def _postproc_scores(self, answers_distances: dict, scale_to=(0, 4)):
+        dists = np.array(list(answers_distances.values()))
+        norm_dists = (dists-min(dists))/(max(dists)-min(dists))
+        norm_similarities = 1-norm_dists
+        scaled_similarities = (norm_similarities-scale_to[0])*(scale_to[1]-scale_to[0])
+        return dict(zip(answers_distances.keys(), scaled_similarities))
 
     def _get_ranked_list(self, question_body: str, no_ranked_results=int(10e5)):
         # return the most similar answers for a body of given piece of text
         question_emb = self.model.encode([question_body])[0]
-        ranked_results, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results,
-                                                                   include_distances=True)
-        return dict(zip(map(str, ranked_results), dists))
+        ranked_results_i, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results,
+                                                                     include_distances=True)
+        ranked_results = self.index[0, ranked_results_i]
+        dists_dict = dict(zip(map(lambda a_key: str(int(a_key)), ranked_results), dists))
+        similarity_dict = self._postproc_scores(dists_dict)
+        return similarity_dict
 
     def __call__(self, *args, eval_all_metrics=False, **kwargs) -> float:
         if not self.finalized_index:
@@ -123,10 +136,9 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         self.questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
 
         def trec_metric_f():
-            from arqmath_eval import ndcg
-            return ndcg(deepcopy(self.questions_predicted_nns))
+            return ndcg(self.questions_predicted_nns)
 
         if eval_all_metrics:
             return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
         else:
-            return trec_metric_f()
+            return ndcg(self.questions_predicted_nns)

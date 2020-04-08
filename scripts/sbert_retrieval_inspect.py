@@ -4,6 +4,7 @@ from torch.utils.data import RandomSampler, DataLoader
 
 from ARQMathCode.post_reader_record import DataReaderRecord
 from preproc.question_answer.unique_prefix_substituer import UniquePrefixSubstituer
+from preproc.question_answer.infix_substituer import InfixSubstituer
 from question_answer.utils import examples_from_questions_tup
 from sentence_transformers import SentenceTransformer, losses, SentencesDataset
 from scripts.loader_to_tsv import dump_to_tsv
@@ -13,17 +14,19 @@ from sentence_transformers.evaluation import IREvaluator
 
 device = "cpu"
 
-model = SentenceTransformer('bert-base-wikipedia-sections-mean-tokens', device=device)
+model = SentenceTransformer('/data/arqmath/models/train_sampled_eval9', device=device)
 
 clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
 dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
 # postprocessor = UniquePrefixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv',
 #                                        "/home/michal/Documents/projects/arqmath/compubert/question_answer/out/0_BERT/vocab.txt")
-# postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
+postprocessor = InfixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_infix.V0.2.tsv')
+
+postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
 # postprocessor.extend_sbert_vocab(model)
 
-all_examples = list(examples_from_questions_tup(dr.post_parser.map_questions.items()))
+all_examples = list(examples_from_questions_tup(postproc_questions))
 # all_examples = list(examples_from_questions_tup(postproc_questions))
 examples_len = len(all_examples)
 
