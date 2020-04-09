@@ -50,7 +50,7 @@ evaluator = IREvaluator(model, dev_loader, post_parser=dr.post_parser, show_prog
 # index all- not necessary for the current eval
 # evaluator.add_to_index(dr.post_parser.map_questions.items())
 
-print(evaluator(model, dev_loader))
+print(evaluator(model, "../question_answer/out"))
 
 model.fit(train_objectives=[(train_loader, train_loss)],
           evaluator=evaluator,

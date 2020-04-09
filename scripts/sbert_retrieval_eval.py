@@ -47,13 +47,13 @@ dev_loader = DataLoader(dev_data, batch_size=2, sampler=dev_sampler)
 train_loss = losses.CosineSimilarityLoss(model=model)
 
 # evaluator = EmbeddingSimilarityEvaluator(dev_loader, show_progress_bar=True, device=device)
-evaluator = IREvaluator(model, eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml",
-                        show_progress_bar=True, device=device)
+evaluator = IREvaluator(model, dev_loader, post_parser=dr.post_parser, show_progress_bar=True, device=device,
+                        eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml")
 # evaluator.add_to_index(dr.post_parser.map_questions.items())
 # evaluator.index_judged_questions(dr.post_parser, reload_embs_dir="annoy_t10.pkl")
 evaluator.index_judged_questions(dr.post_parser)
 # evaluator.add_to_index(dr.post_parser.map_questions.items(), reload_embs_dir="annoy_t10.pkl")
 
-print(evaluator(model, dataloader=dev_loader, eval_all_metrics=True))
+print(evaluator(model, "../question_answer/out"))
 
 print("done")
