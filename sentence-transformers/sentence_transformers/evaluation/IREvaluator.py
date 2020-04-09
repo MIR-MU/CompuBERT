@@ -6,6 +6,7 @@ from annoy import AnnoyIndex
 from arqmath_eval import get_judged_documents
 from arqmath_eval import ndcg
 from sentence_transformers import SentenceTransformer
+from torch.utils.data import DataLoader
 
 from ARQMathCode.Entities.Post import Question
 from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
@@ -27,7 +28,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
-    def __init__(self, model: SentenceTransformer, post_parser: PostParserRecord,
+    def __init__(self, model: SentenceTransformer, dataloader: DataLoader, post_parser: PostParserRecord,
                  eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
                  name: str = '', show_progress_bar: bool = None, device=None):
         """
@@ -38,7 +39,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         :param main_similarity:
             the similarity metric that will be used for the returned score
         """
-        super().__init__(main_similarity, name, show_progress_bar, device)
+        super().__init__(dataloader, main_similarity, name, show_progress_bar, device)
         self.model = model
         self.post_parser = post_parser
         # shape = (post_id, is_question, <embeddings>)
@@ -136,7 +137,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         similarity_dict = self._postproc_scores(dists_dict)
         return similarity_dict
 
-    def __call__(self, *args, eval_all_metrics=False, reindex=True, **kwargs) -> float:
+    def __call__(self, *args, eval_all_metrics=True, reindex=True, **kwargs) -> float:
         if reindex:
             self.clear_index()
             self.index_judged_questions()

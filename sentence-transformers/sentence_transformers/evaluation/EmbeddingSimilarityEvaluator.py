@@ -24,7 +24,7 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
     The results are written in a CSV. If a CSV already exists, then values are appended.
     """
 
-    def __init__(self, main_similarity: SimilarityFunction = None, name: str = '',
+    def __init__(self, dataloader: DataLoader, main_similarity: SimilarityFunction = None, name: str = '',
                  show_progress_bar: bool = None, device=None):
         """
         Constructs an evaluator based for the dataset
@@ -34,6 +34,7 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
         :param main_similarity:
             the similarity metric that will be used for the returned score
         """
+        self.dataloader = dataloader
         self.main_similarity = main_similarity
         self.name = name
         if name:
@@ -50,7 +51,7 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
 
         self.csv_file: str = "similarity_evaluation"+name+"_results.csv"
 
-    def __call__(self, model: 'SequentialSentenceEmbedder', dataloader: DataLoader, output_path: str = None,
+    def __call__(self, model: 'SequentialSentenceEmbedder', output_path: str = None,
                  epoch: int = -1, steps: int = -1, additional_evaluator: Callable[[], float] = None) -> float:
         model.eval()
 
@@ -64,9 +65,9 @@ class EmbeddingSimilarityEvaluator(SentenceEvaluator):
 
         logging.info("Evaluation the model on "+self.name+" dataset"+out_txt)
 
-        dataloader.collate_fn = model.smart_batching_collate
+        self.dataloader.collate_fn = model.smart_batching_collate
 
-        iterator = dataloader
+        iterator = self.dataloader
         if self.show_progress_bar:
             iterator = tqdm(iterator, desc="Convert Evaluating")
 

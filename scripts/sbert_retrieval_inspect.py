@@ -14,7 +14,7 @@ from sentence_transformers.evaluation import IREvaluator
 
 device = "cpu"
 
-model = SentenceTransformer('/data/arqmath/models/train_sampled_eval9', device=device)
+model = SentenceTransformer('/data/arqmath/models/train_sampled_eval6', device=device)
 
 clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
 dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
@@ -43,4 +43,4 @@ dev_data = SentencesDataset(all_examples[train_dev_test_split[0]:train_dev_test_
 dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=15)
 dev_loader = DataLoader(train_data, batch_size=5, sampler=dev_sampler)
 
-dump_to_tsv(train_loader, ids_token_map=model[0].tokenizer.ids_to_tokens, out_file='nopreproc_dump.tsv', first_n=10)
+dump_to_tsv(train_loader, ids_token_map=model[0].tokenizer.ids_to_tokens, out_file='infix_dump.tsv', first_n=10)

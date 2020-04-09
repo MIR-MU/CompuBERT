@@ -41,7 +41,7 @@ class SentencesDataset(Dataset):
     def convert_chunk_examples(args_iter: Iterable):
         out_chunk = []
         examples, tokenizer = args_iter
-        for example in tqdm(examples, "Chunk tokenize"):
+        for example in tqdm(examples, "Tokenize dataset: parallel: chunk of %s examples" % len(examples)):
             tokenized_texts = [tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text)) for text in example.texts]
             out_chunk.append(tokenized_texts + [example.label])
         return out_chunk
@@ -63,6 +63,20 @@ class SentencesDataset(Dataset):
             for out_item in out_chunk:
                 yield out_item[0], out_item[1], out_item[2]
 
+    def convert_texts_sequential(self, examples_iter: Iterable[InputExample], model: SentenceTransformer, label_type):
+        if self.show_progress_bar:
+            examples_iter = tqdm(examples_iter, desc="Tokenize dataset: sequential")
+
+        for example in examples_iter:
+            if label_type is None:
+                if isinstance(example.label, int):
+                    label_type = torch.long
+                elif isinstance(example.label, float):
+                    label_type = torch.float
+            tokenized_texts = [model.tokenize(text) for text in example.texts]
+
+            yield tokenized_texts + [example.label]
+
     def convert_input_examples(self, examples: List[InputExample], model: SentenceTransformer):
         """
         Converts input examples to a SmartBatchingDataset usable to train the model with
@@ -80,31 +94,15 @@ class SentencesDataset(Dataset):
         label_type = None
         iterator = examples
 
-        # if self.show_progress_bar:
-        #     iterator = tqdm(iterator, desc="Convert dataset")
-
-        # for ex_index, example in enumerate(iterator):
-        #     if label_type is None:
-        #         if isinstance(example.label, int):
-        #             label_type = torch.long
-        #         elif isinstance(example.label, float):
-        #             label_type = torch.float
-        #     tokenized_texts = [model.tokenize(text) for text in example.texts]
-        #
-        #     for i, token in enumerate(tokenized_texts):
-        #         if max_seq_length != None and max_seq_length > 0 and len(token) >= max_seq_length:
-        #             too_long[i] += 1
-        #
-        #     labels.append(example.label)
-        #     for i in range(num_texts):
-        #         inputs[i].append(tokenized_texts[i])
         if label_type is None:
             if isinstance(examples[0].label, int):
                 label_type = torch.long
             elif isinstance(examples[0].label, float):
                 label_type = torch.float
 
-        out_triples = self.convert_texts_parallel(iterator, tokenizer=model._modules["0"].tokenizer)
+        # out_triples = self.convert_texts_parallel(iterator, tokenizer=model._modules["0"].tokenizer)
+        out_triples = self.convert_texts_sequential(iterator, model, label_type)
+
         tokens1, tokens2, labels = zip(*out_triples)
         self.tokens = np.array(list(zip(tokens1, tokens2))).transpose()
         self.labels = torch.tensor(labels, dtype=label_type)

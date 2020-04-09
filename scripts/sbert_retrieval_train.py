@@ -14,9 +14,9 @@ from sentence_transformers.evaluation import IREvaluator
 device = "cpu"
 
 model = SentenceTransformer('bert-base-wikipedia-sections-mean-tokens', device=device)
-
+# model = SentenceTransformer('/data/arqmath/models/train_sampled_eval9', device=device)
 clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
-dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=100)
+dr = DataReaderRecord(clef_home_directory_file_path)
 
 # postprocessor = UniquePrefixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv',
 #                                        "/home/michal/Documents/projects/arqmath/compubert/question_answer/out/0_BERT/vocab.txt")
@@ -45,12 +45,12 @@ dev_loader = DataLoader(train_data, batch_size=6, sampler=dev_sampler)
 train_loss = losses.CosineSimilarityLoss(model=model)
 
 # evaluator = EmbeddingSimilarityEvaluator(dev_loader, show_progress_bar=True, device=device)
-evaluator = IREvaluator(model, post_parser=dr.post_parser, show_progress_bar=True, device=device,
+evaluator = IREvaluator(model, dev_loader, post_parser=dr.post_parser, show_progress_bar=True, device=device,
                         eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml")
 # index all- not necessary for the current eval
 # evaluator.add_to_index(dr.post_parser.map_questions.items())
 
-print(evaluator(model))
+print(evaluator(model, dev_loader))
 
 model.fit(train_objectives=[(train_loader, train_loss)],
           evaluator=evaluator,
