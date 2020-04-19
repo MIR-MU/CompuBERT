@@ -16,6 +16,7 @@ from . import SimilarityFunction, EmbeddingSimilarityEvaluator
 
 class IREvaluator(EmbeddingSimilarityEvaluator):
     """
+    TODO: read https://drive.google.com/file/d/1y2EHcTLuA63VS6IL5wc29TlG9wIDDLg0/view
     Evaluate a model based on the similarity of the embeddings by calculating the Spearman and Pearson rank correlation
     in comparison to the gold standard labels.
     The metrics are the cosine similarity as well as euclidean and Manhattan distance
@@ -29,7 +30,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
     def __init__(self, model: SentenceTransformer, dataloader: DataLoader, post_parser: PostParserRecord,
-                 eval_topics_path, trec_metric="ndcg", main_similarity: SimilarityFunction = None,
+                 eval_topics_path, main_similarity: SimilarityFunction = None,
                  name: str = '', show_progress_bar: bool = None, device=None):
         """
         Constructs an evaluator based for the dataset
@@ -61,7 +62,6 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         #         except KeyError:
         #             raise KeyError("Key %s not found in rel_questions_map" % l_content[0])
         # self.evaluator = RelevanceEvaluator(self.judgements, measures={trec_metric})
-        self.trec_metric = trec_metric
         self.eval_texts = self._eval_texts_from_xml(eval_topics_path)
 
     @staticmethod
@@ -110,7 +110,8 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     def clear_index(self):
         self.annoy_index.unload()
-        self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension())
+        self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension(), 'euclidean')
+        self.trec_metric = "euclidean_ndcg"
         self.finalized_index = False
 
     def finalize_index(self, annoy_trees=100, out_file=None):
@@ -127,7 +128,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         scaled_similarities = (norm_similarities-scale_to[0])*(scale_to[1]-scale_to[0])
         return dict(zip(answers_distances.keys(), scaled_similarities))
 
-    def _get_ranked_list(self, question_body: str, no_ranked_results=int(10e5)):
+    def _get_ranked_list(self, question_body: str, no_ranked_results=1000):
         # return the most similar answers for a body of given piece of text
         question_emb = self.model.encode([question_body])[0]
         ranked_results_i, dists = self.annoy_index.get_nns_by_vector(question_emb, n=no_ranked_results,
