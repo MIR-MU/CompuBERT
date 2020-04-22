@@ -71,7 +71,7 @@ class InfixSubstituer:
 
     def _process_body(self, body: str):
         body_out = body
-        # body_out = unicodedata.normalize('NFKC', body_out)
+        body_out = unicodedata.normalize('NFKC', body_out)
         body_out = self._drop_original_math(body_out)
         body_out = self._drop_xml_tags(body_out)
         return body_out
@@ -81,7 +81,9 @@ class InfixSubstituer:
         for match in re.finditer(self.matching_template % r'(\d+)', qa_body):
             match_id = int(match.groups()[0])
             # Replace the initial formula tag (matching_template) with preprocessed formula
-            formula_postproc = self._process_formula(self.formulas_map.get(match_id, ""))
+            # formula_postproc = self._process_formula(self.formulas_map.get(match_id, ""))
+            # try to do nothing, no replacements
+            formula_postproc = self.formulas_map.get(match_id, "")
             body_out = body_out.replace(self.matching_template % match_id, formula_postproc)
         return self._process_body(body_out)
 

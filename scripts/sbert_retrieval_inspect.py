@@ -1,10 +1,10 @@
-# TODO: not the main train script - just for local tests. Go to ../sbert_retrieval_train.py
-
 from torch.utils.data import RandomSampler, DataLoader
 
 from ARQMathCode.post_reader_record import DataReaderRecord
 from preproc.question_answer.unique_prefix_substituer import UniquePrefixSubstituer
-from preproc.question_answer.infix_substituer import InfixSubstituer
+# from preproc.question_answer.infix_substituer import InfixSubstituer
+from preproc.question_answer.polish_substituer import PolishSubstituer
+from preproc.question_answer.blank_substituer import BlankSubstituer
 from question_answer.utils import examples_from_questions_tup
 from sentence_transformers import SentenceTransformer, losses, SentencesDataset
 from scripts.loader_to_tsv import dump_to_tsv
@@ -14,14 +14,15 @@ from sentence_transformers.evaluation import IREvaluator
 
 device = "cpu"
 
-model = SentenceTransformer('/data/arqmath/models/train_sampled_eval6', device=device)
+model = SentenceTransformer('/data/arqmath/models/train_sampled_eval16', device=device)
 
-clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
+clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection_v1.0'
 dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=1000)
 
 # postprocessor = UniquePrefixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv',
 #                                        "/home/michal/Documents/projects/arqmath/compubert/question_answer/out/0_BERT/vocab.txt")
-postprocessor = InfixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_infix.V0.2.tsv')
+postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection_v1.0/formula_prefix.V1.0.tsv')
+# postprocessor = BlankSubstituer()
 
 postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
 # postprocessor.extend_sbert_vocab(model)
@@ -40,7 +41,12 @@ train_data = SentencesDataset(all_examples[:train_dev_test_split[0]], model, sho
 train_loader = DataLoader(train_data, batch_size=5, shuffle=False)
 
 dev_data = SentencesDataset(all_examples[train_dev_test_split[0]:train_dev_test_split[1]], model, show_progress_bar=True)
-dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=15)
-dev_loader = DataLoader(train_data, batch_size=5, sampler=dev_sampler)
+# dev_sampler = RandomSampler(dev_data, replacement=True, num_samples=15)
+# dev_loader = DataLoader(dev_data, batch_size=5, sampler=dev_sampler)
+# TODO: dev_loader contains random shit in the decoded loader, but not in dev_data
+dev_loader = DataLoader(dev_data, batch_size=5)
 
-dump_to_tsv(train_loader, ids_token_map=model[0].tokenizer.ids_to_tokens, out_file='infix_dump.tsv', first_n=10)
+dump_to_tsv(train_loader, ids_token_map=model[0].tokenizer.ids_to_tokens, out_file='prefix_dump_train.tsv', first_n=10)
+dump_to_tsv(dev_loader, ids_token_map=model[0].tokenizer.ids_to_tokens, out_file='prefix_dump_dev.tsv', first_n=10)
+
+print("done")

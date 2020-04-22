@@ -25,7 +25,7 @@ alias_map = {"-": " ",
              "much": " ",
              "percent": "%",
              "limit": "lim",
-             "SUB": "",
+             "SUB": "_",
              "N!": " ",
              "V!": "var ",
              "T!": " ",
@@ -58,22 +58,23 @@ class PolishSubstituer:
         noformula_parts = [part for i, part in enumerate(body_parts) if i % 2 == 0]
         return ' '.join(noformula_parts)
 
-    def _process_formula(self, formula: str):
+    @staticmethod
+    def _process_formula(formula: str):
         formula_out = formula
         for alias_k in alias_map.keys():
-            # for part in [p for p in formula_out.split() if 'O!' in p]:
-            #     try:
-            #         self.all_ops[part] += 1
-            #     except KeyError:
-            #         self.all_ops[part] = 1
             formula_out = formula_out.replace(alias_k, alias_map[alias_k])
         return formula_out
 
     def _process_body(self, body: str):
         body_out = body
-        # body_out = unicodedata.normalize('NFKC', body_out)
-        body_out = self._drop_original_math(body_out)
+        body_out = unicodedata.normalize('NFKC', body_out)
+        # body_out = self._drop_original_math(body_out)
         body_out = self._drop_xml_tags(body_out)
+        return body_out
+
+    def replace_math(self, body_in: str, math_id: int, new_math_content: str):
+        math_match = re.findall(self.matching_template % math_id + r".+?</span>", body_in)[0]
+        body_out = body_in.replace(math_match, new_math_content)
         return body_out
 
     def subst_body(self, qa_body: str) -> str:
@@ -81,9 +82,10 @@ class PolishSubstituer:
         for match in re.finditer(self.matching_template % r'(\d+)', qa_body):
             match_id = int(match.groups()[0])
             # Replace the initial formula tag (matching_template) with preprocessed formula
-            formula_postproc = self._process_formula(self.formulas_map.get(match_id, ""))
-            body_out = body_out.replace(self.matching_template % match_id, formula_postproc)
-        return self._process_body(body_out)
+            formula = self._process_formula(self.formulas_map.get(match_id, ""))
+            formula_postproc = "$"+self._process_body(formula)+"$"
+            body_out = self.replace_math(body_out, match_id, formula_postproc)
+        return self._drop_xml_tags(body_out)
 
     def process_questions(self, questions: Dict[int, Question]) -> Tuple[int, Iterable[Question]]:
         for q_i, q in tqdm(questions.items(), desc="Parsing Polish notation"):
