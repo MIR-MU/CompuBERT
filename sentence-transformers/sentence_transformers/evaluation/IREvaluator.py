@@ -48,20 +48,6 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         self.index = np.empty(shape=(2, 0))
         self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension())
 
-        # self.judgements = dict()
-        # # evaluator init
-        # with open(rel_judgements_file, "r") as f:
-        #     for ln in f.readlines():
-        #         l_content = [item.strip() for item in ln.split("\t")]
-        #         try:
-        #             q = int(l_content[0])
-        #             try:
-        #                 self.judgements[str(q)][l_content[2]] = int(l_content[-1])
-        #             except KeyError:
-        #                 self.judgements[str(q)] = {l_content[2]: int(l_content[-1])}
-        #         except KeyError:
-        #             raise KeyError("Key %s not found in rel_questions_map" % l_content[0])
-        # self.evaluator = RelevanceEvaluator(self.judgements, measures={trec_metric})
         self.eval_texts = self._eval_texts_from_xml(eval_topics_path)
 
     @staticmethod

@@ -42,7 +42,7 @@ class BERT(nn.Module):
         """
         return self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(text))
 
-    def get_sentence_features(self, tokens: List[int], pad_seq_length: int):
+    def get_sentence_features(self, tokens: List[int], pad_seq_length: int, math_sep_char: str = '$'):
         """
         Convert tokenized sentence in its embedding ids, segment ids and mask
 
@@ -50,6 +50,8 @@ class BERT(nn.Module):
             a tokenized sentence
         :param pad_seq_length:
             the maximal length of the sequence. Cannot be greater than self.sentence_transformer_config.max_seq_length
+        :param math_sep_char:
+            char separating another input_type
         :return: embedding ids, segment ids and mask for the sentence
         """
         pad_seq_length = min(pad_seq_length, self.max_seq_length)
@@ -58,9 +60,18 @@ class BERT(nn.Module):
         input_ids = [self.cls_token_id] + tokens + [self.sep_token_id]
         sentence_length = len(input_ids)
 
-        pad_seq_length += 2  ##Add Space for CLS + SEP token
+        pad_seq_length += 2  # Add Space for CLS + SEP token
 
-        token_type_ids = [0] * len(input_ids)
+        # adding math as a new input type
+        math_sep_id = self.tokenizer.convert_tokens_to_ids([math_sep_char])[0]
+        math_sep_pos_pairs = np.arange(len(input_ids))[np.array(input_ids) == math_sep_id].reshape(-1, 2)
+        token_type_ids = np.array([0] * len(input_ids))
+        for math_i_start, math_i_end in math_sep_pos_pairs:
+            token_type_ids[math_i_start-1:math_i_end] = 1
+        token_type_ids = list(token_type_ids)
+        # end adding math as a new input type
+
+        # token_type_ids = [0] * len(input_ids)
         input_mask = [1] * len(input_ids)
 
         # Zero-pad up to the sequence length. BERT: Pad to the right
