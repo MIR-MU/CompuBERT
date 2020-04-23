@@ -4,7 +4,7 @@ from typing import Tuple, Iterable
 import numpy as np
 from annoy import AnnoyIndex
 from arqmath_eval import get_judged_documents
-from arqmath_eval import ndcg
+from arqmath_eval.common import get_ndcg
 from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader
 
@@ -85,7 +85,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     def index_judged_questions(self, reload_embs_dir=False):
         relevant_qs = dict()
-        for relevant_qi in get_judged_documents("task1"):
+        for relevant_qi in get_judged_documents(task='task1-votes', subset='train-validation'):
             try:
                 parent_id = self.post_parser.map_just_answers[int(relevant_qi)].parent_id
             except KeyError as e:
@@ -134,9 +134,9 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         self.questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
 
         def trec_metric_f():
-            return ndcg(self.questions_predicted_nns)
+            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='train-validation')
 
         if eval_all_metrics:
             return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
         else:
-            return ndcg(self.questions_predicted_nns)
+            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='train-validation')
