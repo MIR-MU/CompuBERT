@@ -64,7 +64,11 @@ class BERT(nn.Module):
 
         # adding math as a new input type
         math_sep_id = self.tokenizer.convert_tokens_to_ids([math_sep_char])[0]
-        math_sep_pos_pairs = np.arange(len(input_ids))[np.array(input_ids) == math_sep_id].reshape(-1, 2)
+        math_sep_pos = np.arange(len(input_ids))[np.array(input_ids) == math_sep_id]
+        try:
+            math_sep_pos_pairs = math_sep_pos.reshape(-1, 2)
+        except ValueError:
+            math_sep_pos_pairs = np.append(math_sep_pos, len(input_ids)-1).reshape(-1, 2)
         token_type_ids = np.array([0] * len(input_ids))
         for math_i_start, math_i_end in math_sep_pos_pairs:
             token_type_ids[math_i_start-1:math_i_end] = 1
