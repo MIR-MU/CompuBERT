@@ -106,6 +106,8 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             relevant_qs[parent_id] = self.post_parser.map_questions[parent_id]
         indexed_items = list(relevant_qs.items())
         if subsample_to:
+            # assures to choose the same questions every time
+            random.seed(1234)
             indexed_items = random.sample(indexed_items, subsample_to)
 
         self.add_to_index(indexed_items, reload_embs_dir=reload_embs_dir)
