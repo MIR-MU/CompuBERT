@@ -1,4 +1,5 @@
 import datetime
+import random
 from typing import Tuple, Iterable
 
 import numpy as np
@@ -26,7 +27,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
     """
     index = None
     finalized_index = False
-
+    trec_metric = "euclidean_ndcg"
     eval_topics_path = "../question_answer/eval_dir/Task1_Samples_V2.0.xml"
 
     def __init__(self, model: SentenceTransformer, dataloader: DataLoader, post_parser: PostParserRecord,
@@ -83,7 +84,18 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
             self.finalized_index = True
         return batch_index
 
-    def index_judged_questions(self, reload_embs_dir=False):
+    def get_judged_questions(self):
+        relevant_qs = dict()
+        for relevant_ai in self.index[0]:
+            try:
+                parent_id = self.post_parser.map_just_answers[int(relevant_ai)].parent_id
+            except KeyError as e:
+                print("IREvaluator error: judged answer %s was not loaded and can not be evaluated" % relevant_ai)
+                raise e
+            relevant_qs[parent_id] = self.post_parser.map_questions[parent_id]
+        return relevant_qs
+
+    def index_judged_questions(self, reload_embs_dir=False, subsample_to=2000):
         relevant_qs = dict()
         for relevant_qi in get_judged_documents(task='task1-votes', subset='train-validation'):
             try:
@@ -92,12 +104,15 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
                 print("IREvaluator error: judged answer %s was not loaded and can not be evaluated" % relevant_qi)
                 raise e
             relevant_qs[parent_id] = self.post_parser.map_questions[parent_id]
-        self.add_to_index(relevant_qs.items(), reload_embs_dir=reload_embs_dir)
+        indexed_items = list(relevant_qs.items())
+        if subsample_to:
+            indexed_items = random.sample(indexed_items, subsample_to)
+
+        self.add_to_index(indexed_items, reload_embs_dir=reload_embs_dir)
 
     def clear_index(self):
         self.annoy_index.unload()
         self.annoy_index = AnnoyIndex(self.model.get_sentence_embedding_dimension(), 'euclidean')
-        self.trec_metric = "euclidean_ndcg"
         self.finalized_index = False
 
     def finalize_index(self, annoy_trees=100, out_file=None):
@@ -131,7 +146,8 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
         if not self.finalized_index:
             self.finalize_index()
 
-        self.questions_predicted_nns = {str(k): self._get_ranked_list(v) for k, v in self.eval_texts.items()}
+        self.questions_predicted_nns = {str(k): self._get_ranked_list(v.body)
+                                        for k, v in self.get_judged_questions().items()}
 
         def trec_metric_f():
             return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='train-validation')
