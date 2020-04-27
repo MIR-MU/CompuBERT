@@ -7,24 +7,35 @@ from preproc.question_answer.unique_prefix_substituer import UniquePrefixSubstit
 # from preproc.question_answer.polish_substituer import PolishSubstituer
 from preproc.question_answer.blank_substituer import BlankSubstituer
 from question_answer.utils import examples_from_questions_tup
-from sentence_transformers import SentenceTransformer, losses, SentencesDataset
+from sentence_transformers import models, SentenceTransformer, losses, SentencesDataset
 
 from sentence_transformers.evaluation import IREvaluator
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 device = "cpu"
 
-model = SentenceTransformer('bert-base-wikipedia-sections-mean-tokens', device=device)
+# Use BERT for mapping tokens to embeddings
+word_embedding_model = models.Transformer('bert-base-uncased')
+
+# Apply mean pooling to get one fixed sized sentence vector
+pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
+                               pooling_mode_mean_tokens=True,
+                               pooling_mode_cls_token=False,
+                               pooling_mode_max_tokens=False)
+
+model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # model = SentenceTransformer('/data/arqmath/models/train_sampled_eval9', device=device)
+
 clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection_v1.0'
-dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=10000)
+dr = DataReaderRecord(clef_home_directory_file_path, limit_posts=100)
 
 # postprocessor = UniquePrefixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection/formula_prefix.V0.2.tsv',
 #                                        "/home/michal/Documents/projects/arqmath/compubert/question_answer/out/0_BERT/vocab.txt")
 # postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection_v1.0/formula_prefix.V1.0.tsv')
-postprocessor = BlankSubstituer()
+# postprocessor = BlankSubstituer()
 
-postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
+# postproc_questions = list(postprocessor.process_questions(dr.post_parser.map_questions))
+postproc_questions = list(dr.post_parser.map_questions.items())
 # postprocessor.extend_sbert_vocab(model)
 
 all_examples = list(examples_from_questions_tup(postproc_questions))
@@ -46,13 +57,13 @@ dev_loader = DataLoader(train_data, batch_size=6, sampler=dev_sampler)
 
 train_loss = losses.CosineSimilarityLoss(model=model)
 
-evaluator = EmbeddingSimilarityEvaluator(dev_loader, show_progress_bar=True, device=device)
-# evaluator = IREvaluator(model, dev_loader, post_parser=dr.post_parser, show_progress_bar=True, device=device,
-#                         eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml")
+# evaluator = EmbeddingSimilarityEvaluator(dev_loader, show_progress_bar=True, device=device)
+evaluator = IREvaluator(model, dev_loader, post_parser=dr.post_parser, show_progress_bar=True, device=device,
+                        eval_topics_path="../question_answer/eval_dir/Task1_Samples_V2.0.xml")
 # index all- not necessary for the current eval
 # evaluator.add_to_index(dr.post_parser.map_questions.items())
 
-# print(evaluator(model, "../question_answer/out"))
+print(evaluator(model, "../question_answer/out"))
 
 model.fit(train_objectives=[(train_loader, train_loss)],
           evaluator=evaluator,
