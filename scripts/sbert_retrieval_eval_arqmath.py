@@ -44,9 +44,9 @@ def eval_transformer(model_dir: str = '/data/arqmath/models/train_sampled_eval9'
         answers_dists = cosine_similarity(np.array(question_e), np.array(answers_e))[0]
         for aid, answer_sim in sorted(zip(judged_answer_ids, answers_dists), key=lambda qid_dist: qid_dist[1], reverse=True):
             print(aid, answer_sim)
-            results[qid][aid] = answer_sim
+            results[qid][aid] = float(answer_sim)
 
-    ndcg_val = get_ndcg(results, task='task1-votes', subset='train')
+    ndcg_val = get_ndcg(results, task=task, subset=subset)
     return ndcg_val, results
 
 
