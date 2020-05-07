@@ -76,7 +76,7 @@ def eval_transformer(model_dir: str, prefix: bool, subsample: int = False):
 def eval_all_dirs(dirs: List[str], results_tsv_dir: str, summary_path: str, prefix: bool):
     summary_f = open(summary_path, "w")
     for model_dir in dirs:
-        ndcg, results = eval_transformer(model_dir, subsample=100)
+        ndcg, results = eval_transformer(model_dir, subsample=100, prefix=prefix)
         print("%s:\t%s" % (model_dir, ndcg), file=summary_f)
         report_ndcg_results(os.path.join(results_tsv_dir, model_dir.split("/")[-1]+".tsv"), results)
 
