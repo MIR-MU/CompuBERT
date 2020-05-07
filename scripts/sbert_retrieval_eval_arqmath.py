@@ -9,10 +9,33 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import os
 
+from preproc.question_answer.blank_substituer import BlankSubstituer
+from preproc.question_answer.infix_substituer import InfixSubstituer
+from preproc.question_answer.polish_substituer import PolishSubstituer
+
 device = "cpu"
 
-clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection'
+clef_home_directory_file_path = '/data/arqmath/ARQMath_CLEF2020/Collection_v1.0'
 dr = DataReaderRecord(clef_home_directory_file_path)
+
+
+def get_questions(all_questions_ids, prefix=False, infix=False):
+    # prefix has a priority, go for infix only if prefix=False
+    all_questions_raw = [(qid, dr.post_parser.map_questions[int(qid)]) for qid in all_questions_ids]
+    if not prefix and not infix:
+        postprocessor = BlankSubstituer()
+        all_questions = list(postprocessor.process_questions(all_questions_raw))
+        return all_questions
+    elif prefix:
+        postprocessor = PolishSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection_v1.0/formula_prefix.V1.0.tsv')
+        all_questions = list(postprocessor.process_questions(all_questions_raw))
+        return all_questions
+    elif infix:
+        postprocessor = InfixSubstituer('/data/arqmath/ARQMath_CLEF2020/Collection_v1.0/formula_prefix.V1.0.tsv')
+        all_questions = list(postprocessor.process_questions(all_questions_raw))
+        return all_questions
+    else:
+        raise NotImplementedError()
 
 
 def report_ndcg_results(result_tsv_name: str, results: dict):
@@ -24,14 +47,14 @@ def report_ndcg_results(result_tsv_name: str, results: dict):
                 print(line, file=f)
 
 
-def eval_transformer(model_dir: str = '/data/arqmath/models/train_sampled_eval9', subsample: int = False):
+def eval_transformer(model_dir: str, prefix: bool, subsample: int = False):
     model = SentenceTransformer(model_dir, device=device)
 
     task = 'task1-votes'
     subset = 'validation'
     results = {}
     all_questions_ids = get_topics(task=task, subset=subset)
-    all_questions = [(qid, dr.post_parser.map_questions[int(qid)]) for qid in all_questions_ids]
+    all_questions = get_questions(all_questions_ids, prefix=prefix)
     if subsample:
         all_questions = all_questions[:subsample]
 
@@ -50,7 +73,7 @@ def eval_transformer(model_dir: str = '/data/arqmath/models/train_sampled_eval9'
     return ndcg_val, results
 
 
-def eval_all_dirs(dirs: List[str], results_tsv_dir: str, summary_path: str):
+def eval_all_dirs(dirs: List[str], results_tsv_dir: str, summary_path: str, prefix: bool):
     summary_f = open(summary_path, "w")
     for model_dir in dirs:
         ndcg, results = eval_transformer(model_dir, subsample=100)
@@ -60,5 +83,6 @@ def eval_all_dirs(dirs: List[str], results_tsv_dir: str, summary_path: str):
 
 eval_all_dirs(["/data/arqmath/models/train_sampled_eval%s" % i for i in [9]],
               "/home/michal/Documents/projects/arqmath/compubert/arqmath_eval_out",
-              "arqmath_eval_summary.tsv")
+              "arqmath_eval_summary.tsv",
+              prefix=True)
 print("done")
