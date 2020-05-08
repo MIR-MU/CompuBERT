@@ -59,7 +59,7 @@ class ExternalSubstituer:
             self.formulas_map[int(str_id)] = ' '.join([token[5:] for token in content_list])
 
     def subst_body(self, q_i: int) -> str:
-        return self.formulas_map[str(q_i)]
+        return self.formulas_map[q_i]
 
     def process_questions(self, questions: Dict[int, Question]) -> Tuple[int, Iterable[Question]]:
         for q_i, q in tqdm(questions.items(), desc="Replacing with external bodies"):
