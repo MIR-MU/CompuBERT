@@ -97,7 +97,7 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
 
     def index_judged_questions(self, reload_embs_dir=False, subsample_to=2000):
         relevant_qs = dict()
-        for relevant_qi in get_judged_documents(task='task1-votes', subset='train-validation'):
+        for relevant_qi in get_judged_documents(task='task1-votes', subset='validation'):
             try:
                 parent_id = self.post_parser.map_just_answers[int(relevant_qi)].parent_id
             except KeyError as e:
@@ -152,9 +152,9 @@ class IREvaluator(EmbeddingSimilarityEvaluator):
                                         for k, v in self.get_judged_questions().items()}
 
         def trec_metric_f():
-            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='train-validation')
+            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='validation')
 
         if eval_all_metrics:
             return super(IREvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
         else:
-            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='train-validation')
+            return get_ndcg(self.questions_predicted_nns, task='task1-votes', subset='validation')
