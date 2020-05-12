@@ -22,7 +22,7 @@ dr = DataReaderRecord(clef_home_directory_file_path)
 
 def get_questions(all_questions_ids, preproc="blank"):
     # prefix has a priority, go for infix only if prefix=False
-    all_questions_raw = dict([(qid, dr.post_parser.map_questions[int(qid)]) for qid in all_questions_ids])
+    all_questions_raw = dict([(int(qid), dr.post_parser.map_questions[int(qid)]) for qid in all_questions_ids])
     if preproc=="blank":
         postprocessor = BlankSubstituer()
     elif preproc=="prefix":
@@ -35,6 +35,7 @@ def get_questions(all_questions_ids, preproc="blank"):
         raise NotImplementedError()
     all_questions = list(postprocessor.process_questions(all_questions_raw))
     return all_questions
+
 
 def report_ndcg_results(result_tsv_name: str, results: dict):
     with open(result_tsv_name, 'wt') as f:
