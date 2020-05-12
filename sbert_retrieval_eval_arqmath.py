@@ -63,7 +63,7 @@ def eval_transformer(model_dir: str, preproc: str, subsample: int = False):
         question_e = model.encode([question.body], batch_size=8)
         answers_bodies = [dr.post_parser.map_just_answers[int(aid)].body for aid in judged_answer_ids]
         answers_e = model.encode(answers_bodies, batch_size=8)
-        answers_dists = cosine_similarity(np.array(question_e), np.array(answers_e))[0]
+        answers_dists = cosine_similarity(np.array([question_e]), np.array(answers_e))[0]
         if i % 100 == 0:
             print("Question %s of %s" % (i, len(all_questions)))
         for aid, answer_sim in sorted(zip(judged_answer_ids, answers_dists), key=lambda qid_dist: qid_dist[1], reverse=True):
