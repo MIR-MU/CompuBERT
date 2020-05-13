@@ -1,28 +1,12 @@
-from typing import List
-
-from sentence_transformers import SentenceTransformer
-
-from ARQMathCode.post_reader_record import DataReaderRecord
-from arqmath_eval import get_topics, get_judged_documents, get_ndcg
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-import os
-
-import datetime
-import random
-from typing import Tuple, Iterable, Dict
-
-import numpy as np
-from annoy import AnnoyIndex
 from arqmath_eval import get_judged_documents
+from arqmath_eval import get_topics
 from arqmath_eval.common import get_ndcg
 from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader
 
-
-from ARQMathCode.Entities.Post import Question
 from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
-from ARQMathCode.topic_file_reader import TopicReader
 from . import SimilarityFunction, EmbeddingSimilarityEvaluator
 
 
