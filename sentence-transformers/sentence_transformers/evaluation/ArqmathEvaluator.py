@@ -46,6 +46,15 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
         self.model = model
         self.post_parser = post_parser_postproc
 
+    @staticmethod
+    def report_ndcg_results(result_tsv_name: str, results: dict):
+        with open(result_tsv_name, 'wt') as f:
+            for topic, documents in results.items():
+                top_documents = sorted(documents.items(), key=lambda x: x[1], reverse=True)[:1000]
+                for rank, (document, similarity_score) in enumerate(top_documents):
+                    line = '{}\txxx\t{}\t{}\t{}\txxx'.format(topic, document, rank + 1, similarity_score)
+                    print(line, file=f)
+
     def eval_transformer(self, subsample: int = False):
         results = {}
         all_questions_ids = get_topics(task=self.task, subset=self.subset)
@@ -76,15 +85,19 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
                 print(aid, answer_sim)
                 results[qid][aid] = float(answer_sim)
 
-        ndcg_val = get_ndcg(results, task=self.task, subset=self.subset)
-        print("Computed ncdg on %s questions: %s" % (len(all_questions), ndcg_val))
-        return ndcg_val
+        return results
 
-    def __call__(self, *args, eval_all_metrics=True, **kwargs) -> float:
+    def __call__(self, *args, eval_all_metrics=True, report_tsv: str = False, **kwargs) -> float:
         def trec_metric_f():
-            return self.eval_transformer()
+            results = self.eval_transformer()
+            ndcg_val = get_ndcg(results, task=self.task, subset=self.subset)
+            print("Computed ncdg: %s" % ndcg_val)
+            if report_tsv:
+                self.report_ndcg_results(report_tsv, results)
+            return ndcg_val
 
         if eval_all_metrics:
             return super(ArqmathEvaluator, self).__call__(*args, **kwargs, additional_evaluator=trec_metric_f)
         else:
-            return self.eval_transformer()
+            return trec_metric_f()
+
