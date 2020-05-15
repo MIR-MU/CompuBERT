@@ -1,4 +1,5 @@
 import unicodedata
+from lxml import etree
 
 import re
 from typing import Dict, Iterable, Tuple
@@ -14,7 +15,9 @@ class BlankSubstituer:
 
     @staticmethod
     def _drop_xml_tags(body: str):
-        return re.sub('<[^<]+>', "", body)
+        html5_parser = etree.HTMLParser(huge_tree=True)
+        html5_document = etree.XML(body, html5_parser)
+        return ' '.join(html5_document.itertext())
 
     def _process_formula(self, formula: str):
         return "$"+self._drop_xml_tags(formula)+"$"
