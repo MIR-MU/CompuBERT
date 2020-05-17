@@ -88,7 +88,7 @@ class PolishSubstituer:
         return self._drop_xml_tags(body_out)
 
     def process_questions(self, questions: Dict[int, Question]) -> Tuple[int, Iterable[Question]]:
-        for q_i, q in tqdm(questions.items(), desc="Parsing Polish notation"):
+        for q_i, q in tqdm(dict(questions).items(), desc="Parsing Polish notation"):
             q.body = self.subst_body(q.body)
             if q.answers is None:
                 continue

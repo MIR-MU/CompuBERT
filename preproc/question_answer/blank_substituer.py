@@ -15,6 +15,8 @@ class BlankSubstituer:
 
     @staticmethod
     def _drop_xml_tags(body: str):
+        if not body:
+            return ''
         html5_parser = etree.HTMLParser(huge_tree=True)
         html5_document = etree.XML(body, html5_parser)
         return ' '.join(html5_document.itertext())

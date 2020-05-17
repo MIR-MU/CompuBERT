@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Iterable
 
 from scipy.stats import zscore
 import numpy as np
@@ -18,7 +18,7 @@ def upvotes_to_distance(all_q_votes):
     return z_vals_norm
 
 
-def examples_from_questions_tup(questions: Tuple[int, Question]):
+def examples_from_questions_tup(questions: Iterable[Tuple[int, Question]]):
     for q_i, q in questions:
         if q_i % 10000 == 0:
             print("Loading %s" % q_i)
