@@ -42,8 +42,8 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
     def eval_transformer(self, subsample: int = False):
         results = {}
         all_questions_ids = get_topics(task=self.task, subset=self.subset)
-        # all_questions = dict([(int(qid), self.post_parser.map_questions[int(qid)]) for qid in all_questions_ids])
-        all_questions = dict([(int(qid), "Question %s content" % qid) for qid in all_questions_ids])
+        all_questions = dict([(int(qid), self.post_parser.map_questions[int(qid)]) for qid in all_questions_ids])
+        # all_questions = dict([(int(qid), "Question %s content" % qid) for qid in all_questions_ids])
         if subsample:
             all_questions = all_questions[:subsample]
 
@@ -52,12 +52,12 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
             judged_answer_ids = get_judged_documents(task=self.task, subset=self.subset, topic=str(qid))
             question_e = self.model.encode([question], batch_size=8)
             try:
-                # answers_bodies = [self.post_parser.map_just_answers[int(aid)].body for aid in judged_answer_ids]
-                answers_bodies = ["Answer %s body" % aid for aid in judged_answer_ids]
+                answers_bodies = [self.post_parser.map_just_answers[int(aid)].body for aid in judged_answer_ids]
+                # answers_bodies = ["Answer %s body" % aid for aid in judged_answer_ids]
             except KeyError:
                 print("Key error at qid %s" % qid)
                 answers_bodies = []
-                answers_bodies = ["Answer %s body" % aid for aid in judged_answer_ids]
+                # answers_bodies = ["Answer %s body" % aid for aid in judged_answer_ids]
             if not answers_bodies:
                 print("No evaluated answers for question %s, dtype %s" % (qid, str(type(qid))))
                 continue
