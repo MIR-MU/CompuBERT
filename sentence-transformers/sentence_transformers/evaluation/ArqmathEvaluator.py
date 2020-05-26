@@ -50,7 +50,7 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
         for i, (qid, question) in enumerate(all_questions.items()):
             results[str(qid)] = {}
             judged_answer_ids = get_judged_documents(task=self.task, subset=self.subset, topic=str(qid))
-            question_e = self.model.encode([question], batch_size=8)
+            question_e = self.model.encode([question.body], batch_size=8)
             try:
                 answers_bodies = [self.post_parser.map_just_answers[int(aid)].body for aid in judged_answer_ids]
                 # answers_bodies = ["Answer %s body" % aid for aid in judged_answer_ids]
