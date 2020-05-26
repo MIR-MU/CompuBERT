@@ -48,7 +48,7 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
             all_questions = all_questions[:subsample]
 
         for i, (qid, question) in enumerate(all_questions.items()):
-            results[qid] = {}
+            results[str(qid)] = {}
             judged_answer_ids = get_judged_documents(task=self.task, subset=self.subset, topic=str(qid))
             question_e = self.model.encode([question], batch_size=8)
             try:
@@ -67,7 +67,7 @@ class ArqmathEvaluator(EmbeddingSimilarityEvaluator):
             for aid, answer_sim in sorted(zip(judged_answer_ids, answers_dists), key=lambda qid_dist: qid_dist[1],
                                           reverse=True):
                 print(aid, answer_sim)
-                results[qid][aid] = float(answer_sim)
+                results[str(qid)][str(aid)] = float(answer_sim)
 
         return results
 
