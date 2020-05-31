@@ -88,12 +88,10 @@ class SBertIRSystem:
             results[q_id] = dict(zip(answers_sorted, answers_sims))
         return results
 
-    def dump_arqmath_response_ratings(self, run_id='CompuBERT',
-                                      submit_dir='/home/michal/Documents/projects/arqmath/compubert/tmp/submit_dir'):
+    def dump_arqmath_response_ratings(self, submit_dir: str):
         # https://gitlab.fi.muni.cz/sojka/mir-general/-/issues/28#note_99180
-        run_name = f'Run_{run_id}_0'
-        filename = f'{submit_dir}/Task-1-QA/MIRMU-task1-{run_id}-auto-both-P.tsv'
-        self.dump_response_ratings(filename, identifier=run_name, top_n=1000)
+        filename = f'{submit_dir}/Task-1-QA/MIRMU-task1-{self.identifier}-auto-both-P.tsv'
+        self.dump_response_ratings(filename, top_n=1000)
 
     def dump_response_ratings(self, file_path: str, questions_ids: Iterable[int] = None,
                               identifier=None, top_n: int = None) -> None:
