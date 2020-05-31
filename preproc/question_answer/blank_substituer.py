@@ -11,7 +11,6 @@ from ARQMathCode.Entity_Parser_Record.post_parser_record import PostParserRecord
 
 class BlankSubstituer:
     matching_template = '<span class="math-container" id="%s">'
-    formulas_map = dict()
 
     @staticmethod
     def _drop_xml_tags(body: str):
@@ -31,11 +30,7 @@ class BlankSubstituer:
 
     def subst_body(self, qa_body: str) -> str:
         body_out = qa_body
-        for match in re.finditer(self.matching_template % r'(\d+)', qa_body):
-            match_id = int(match.groups()[0])
-            # Replace the initial formula tag (matching_template) with preprocessed formula
-            formula = self._process_formula(self.formulas_map.get(match_id, ""))
-            body_out = self.replace_math(body_out, match_id, formula)
+
         return self._drop_xml_tags(body_out)
 
     def process_questions(self, questions: Dict[int, Question]) -> Tuple[int, Iterable[Question]]:
