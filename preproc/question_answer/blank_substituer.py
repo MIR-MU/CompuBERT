@@ -15,7 +15,7 @@ class BlankSubstituer:
 
     @staticmethod
     def _drop_xml_tags(body: str):
-        if not body:
+        if not body.strip():
             return ''
         html5_parser = etree.HTMLParser(huge_tree=True)
         html5_document = etree.XML(body, html5_parser)
@@ -43,19 +43,19 @@ class BlankSubstituer:
             q.body = self.subst_body(q.body)
             if q.answers is None:
                 continue
-            # for a in q.answers:
-            #     a.body = self.subst_body(a.body)
-            # yield q_i, q
+            for a in q.answers:
+                a.body = self.subst_body(a.body)
+            yield q_i, q
 
     def process_answers(self, answers: Dict[int, Answer]) -> Tuple[int, Iterable[Question]]:
         for a_i, a in tqdm(answers.items(), desc="Parsing answers: Original math notation"):
             a.body = self.subst_body(a.body)
-            # yield a_i, a
+            yield a_i, a
 
     def process_parser(self, parser: PostParserRecord) -> PostParserRecord:
         """Process questions and answers bodies in the parser"""
-        self.process_questions(parser.map_questions)
-        self.process_answers(parser.map_questions)
+        parser.map_questions = dict(self.process_questions(parser.map_questions))
+        parser.map_just_answers = dict(self.process_answers(parser.map_just_answers))
         for q_i, q in tqdm(parser.map_questions.items(), desc="Replacing questions answers: Original math notation"):
             if q.answers is None:
                 continue
