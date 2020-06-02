@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
 from ARQMathCode.post_reader_record import DataReaderRecord
+from ARQMathCode import Topic
 from preproc.question_answer.blank_substituer import BlankSubstituer
 from preproc.question_answer.infix_substituer import InfixSubstituer
 from preproc.question_answer.polish_substituer import PolishSubstituer
@@ -52,6 +53,14 @@ class SBertIRSystem:
         questions_bodies = [self.parser.map_questions[int(qid)].body for qid in self.question_index]
         self.questions_embeddings = np.array(self.model.encode(questions_bodies, batch_size=infer_batch_size,
                                                                show_progress_bar=True))
+
+    def index_eval_questions(self, eval_topics_xml: str = "question_answer/eval_dir/Topics_V2.0.xml"):
+        topic_reader = TopicReader(eval_topics_xml)
+        topics = topic_reader.map_topics.values()
+        self.question_index = np.array([topic.topic_id for topic in topics if topic.topic_id not in topic_reader.eval_topics.keys()])
+        questions_bodies = [topic.question for topic in topics if topic.topic_id not in topic_reader.eval_topics.keys()]
+        self.questions_embeddings = np.array(self.model.encode(questions_bodies, batch_size=infer_batch_size,
+                                                               show_progress_bar=True)
 
     def index_answers(self, answers_ids: Iterable[int] = None, infer_batch_size=16) -> None:
         if answers_ids is not None:
