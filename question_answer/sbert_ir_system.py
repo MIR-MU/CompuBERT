@@ -6,8 +6,9 @@ import os
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
+from ARQMathCode.Entities.Post import Question
 from ARQMathCode.post_reader_record import DataReaderRecord
-from ARQMathCode import Topic
+from ARQMathCode.topic_file_reader import TopicReader
 from preproc.question_answer.blank_substituer import BlankSubstituer
 from preproc.question_answer.infix_substituer import InfixSubstituer
 from preproc.question_answer.polish_substituer import PolishSubstituer
@@ -19,6 +20,12 @@ class Preprocessing(Enum):
     INFIX = 2
 
 
+class EvalQuestion(object):
+    def __init__(self, qid: str, body: str):
+        self.qid = qid
+        self.body = body
+
+
 class SBertIRSystem:
     question_index = []
     answers_index = []
@@ -26,21 +33,19 @@ class SBertIRSystem:
     answers_embeddings = None
 
     def __init__(self, model_path: str, questions_path: str, preprocessing: Preprocessing, identifier: str,
-                 *preprocessor_args, use_cuda=True):
+                 *preprocessor_args, use_cuda=True, limit_posts=None):
         if preprocessing == Preprocessing.LATEX:
-            preprocessor = BlankSubstituer()
+            self.preprocessor = BlankSubstituer()
         elif preprocessing == Preprocessing.PREFIX:
-            preprocessor = PolishSubstituer(*preprocessor_args)
+            self.preprocessor = PolishSubstituer(*preprocessor_args)
         elif preprocessing == Preprocessing.INFIX:
-            preprocessor = InfixSubstituer(*preprocessor_args)
+            self.preprocessor = InfixSubstituer(*preprocessor_args)
         else:
             raise NotImplementedError("No default preprocessor. Pick one from %s" % Preprocessing.enum_members)
 
-        # TODO: remove limit_posts
-        # reader = DataReaderRecord(questions_path)
-        reader = DataReaderRecord(questions_path, limit_posts=100)
+        reader = DataReaderRecord(questions_path, limit_posts=limit_posts)
 
-        self.parser = preprocessor.process_parser(reader.post_parser)
+        self.parser = self.preprocessor.process_parser(reader.post_parser)
         self.device = "cuda" if use_cuda else "cpu"
         self.model = SentenceTransformer(model_path, device=self.device)
         self.identifier = identifier
@@ -54,13 +59,19 @@ class SBertIRSystem:
         self.questions_embeddings = np.array(self.model.encode(questions_bodies, batch_size=infer_batch_size,
                                                                show_progress_bar=True))
 
-    def index_eval_questions(self, eval_topics_xml: str = "question_answer/eval_dir/Topics_V2.0.xml"):
+    def index_eval_questions(self, eval_topics_xml: str = "question_answer/eval_dir/Topics_V2.0.xml",
+                             infer_batch_size=16):
         topic_reader = TopicReader(eval_topics_xml)
         topics = topic_reader.map_topics.values()
-        self.question_index = np.array([topic.topic_id for topic in topics if topic.topic_id not in topic_reader.eval_topics.keys()])
+        self.question_index = np.array(
+            [topic.topic_id for topic in topics if topic.topic_id not in topic_reader.eval_topics.keys()])
         questions_bodies = [topic.question for topic in topics if topic.topic_id not in topic_reader.eval_topics.keys()]
-        self.questions_embeddings = np.array(self.model.encode(questions_bodies, batch_size=infer_batch_size,
-                                                               show_progress_bar=True)
+        question_bodies_postproc = [self.preprocessor.subst_body(body) for body in questions_bodies]
+        self.questions_embeddings = np.array(self.model.encode(question_bodies_postproc, batch_size=infer_batch_size,
+                                                               show_progress_bar=True))
+        for qid, qbody in zip(self.question_index, question_bodies_postproc):
+            self.parser.map_questions[qid] = EvalQuestion(qid, qbody)
+        return self.question_index
 
     def index_answers(self, answers_ids: Iterable[int] = None, infer_batch_size=16) -> None:
         if answers_ids is not None:
@@ -117,14 +128,16 @@ class SBertIRSystem:
         results = self._ranked_results_for_questions(np.array(list(questions_ids)))
         results_str = dict()
         for q_id, answers in results.items():
-            q_body = self.parser.map_questions[int(q_id)].body
-            results_str[int(q_id)] = {"body": q_body,
-                                      "answers": {}}
+            if type(q_id) == np.int:
+                q_id = int(q_id)
+            q_body = self.parser.map_questions[q_id].body
+            results_str[q_id] = {"body": q_body,
+                                 "answers": {}}
             for rank, (a_id, a_score) in enumerate(list(answers.items())[:topn]):
                 a_body = self.parser.map_just_answers[int(a_id)].body
-                results_str[int(q_id)]["answers"][int(a_id)] = {"rank": rank,
-                                                                "cosine_sim_score": float(a_score),
-                                                                "body": a_body}
+                results_str[q_id]["answers"][int(a_id)] = {"rank": rank,
+                                                           "cosine_sim_score": float(a_score),
+                                                           "body": a_body}
         with open(json_path, 'wt') as f:
             f.write(json.dumps(results_str))
 
