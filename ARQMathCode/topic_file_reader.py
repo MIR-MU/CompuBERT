@@ -22,9 +22,8 @@ class TopicReader:
     you have access to the 4 attributes mentioned above.
     """
 
-    topic_map = {"A.31": 1,
-                 "A.78": 3,
-                 "A.101": 2}
+    eval_topics = {"A.31": 1,
+                   "A.78": 3}
 
     def __init__(self, topic_file_path):
         self.map_topics = self.__read_topics(topic_file_path)
