@@ -1,6 +1,8 @@
 # CompuBERT
 
-Adaptation of Transformers architecture to resolve ARQMath CLEF 2020 Competition: Answer Retrieval and Formula Search
+Adaptation of Transformers architecture to resolve ARQMath CLEF 2020 Competition: Answer Retrieval and Formula Search.
+
+*The current version of CompuBERT used in the ARQMath-2 CLEF 2021 Competition is different and available for download at [Google Drive](https://drive.google.com/drive/folders/1bxYwWzDX3z81S4TwUaTvqZBHtiMOngez).*
 
 # Citing CompuBERT
 ## Text
